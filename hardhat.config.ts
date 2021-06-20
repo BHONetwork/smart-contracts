@@ -1,9 +1,13 @@
 import { task, HardhatUserConfig } from 'hardhat/config';
+import * as dotenv from 'dotenv';
 import 'tsconfig-paths/register';
 import '@nomiclabs/hardhat-waffle';
 import '@nomiclabs/hardhat-solhint';
 import 'hardhat-gas-reporter';
 import '@nomiclabs/hardhat-ethers';
+import '@nomiclabs/hardhat-etherscan';
+
+dotenv.config();
 
 // This is a sample Hardhat task. To learn how to create your own go to
 // https://hardhat.org/guides/create-task.html
@@ -26,10 +30,11 @@ const config: HardhatUserConfig = {
   networks: {
     'bsc-testnet': {
       url: 'https://data-seed-prebsc-1-s1.binance.org:8545',
-      accounts: [
-        'f9d9825fbbe2e707b105f8aa17635da2ae1bc6e77279f9983e2770bf86f02e45',
-      ],
+      accounts: [process.env.BSC_TESTNET_PRIVATE_KEY as string],
     },
+  },
+  etherscan: {
+    apiKey: process.env.BSCSCAN_API_KEY,
   },
 };
 
