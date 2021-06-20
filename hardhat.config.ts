@@ -1,4 +1,4 @@
-import { task } from 'hardhat/config';
+import { task, HardhatUserConfig } from 'hardhat/config';
 import 'tsconfig-paths/register';
 import '@nomiclabs/hardhat-waffle';
 import '@nomiclabs/hardhat-solhint';
@@ -21,6 +21,16 @@ task('accounts', 'Prints the list of accounts', async (args, hre) => {
 /**
  * @type import('hardhat/config').HardhatUserConfig
  */
-module.exports = {
+const config: HardhatUserConfig = {
   solidity: '0.8.4',
+  networks: {
+    'bsc-testnet': {
+      url: 'https://data-seed-prebsc-1-s1.binance.org:8545',
+      accounts: [
+        'f9d9825fbbe2e707b105f8aa17635da2ae1bc6e77279f9983e2770bf86f02e45',
+      ],
+    },
+  },
 };
+
+export default config;
