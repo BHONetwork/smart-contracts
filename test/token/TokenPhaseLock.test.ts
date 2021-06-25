@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { ethers, waffle } from 'hardhat';
 import { Contract, BigNumber } from 'ethers';
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signers';
 
 describe('TokenPhaseLock', function () {
   let coinContract: Contract;
