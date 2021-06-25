@@ -5,7 +5,7 @@ import '@nomiclabs/hardhat-waffle';
 import '@nomiclabs/hardhat-solhint';
 import 'hardhat-gas-reporter';
 import '@nomiclabs/hardhat-ethers';
-import '@nomiclabs/hardhat-etherscan';
+import 'hardhat-deploy';
 
 dotenv.config();
 
@@ -31,10 +31,16 @@ const config: HardhatUserConfig = {
     'bsc-testnet': {
       url: 'https://data-seed-prebsc-1-s1.binance.org:8545',
       accounts: [process.env.BSC_TESTNET_PRIVATE_KEY as string],
+      live: true,
+      tags: ['staging'],
+      chainId: 97,
     },
   },
   etherscan: {
     apiKey: process.env.BSCSCAN_API_KEY,
+  },
+  namedAccounts: {
+    deployer: 0,
   },
 };
 
