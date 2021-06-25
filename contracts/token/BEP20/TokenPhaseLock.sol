@@ -1,14 +1,15 @@
-// SPDX-License-Identifier: Unlicense
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import "./IBEP20.sol";
 import "./SafeBEP20.sol";
 import "../../math/SafeMathX.sol";
 import "../../utils/Arrays.sol";
 
-contract TokenPhaseLock is Context, Ownable {
+contract TokenPhaseLock is Context, Ownable, Initializable {
     using SafeBEP20 for IBEP20;
     using Arrays for uint256[];
     using SafeMathX for uint256;
@@ -30,6 +31,10 @@ contract TokenPhaseLock is Context, Ownable {
     }
 
     constructor(IBEP20 token_) {
+        initialize(token_);
+    }
+
+    function initialize(IBEP20 token_) public initializer {
         _token = token_;
     }
 
