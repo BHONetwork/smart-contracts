@@ -8,25 +8,24 @@ import "./IBEP20.sol";
 import "./SafeBEP20.sol";
 import "../../math/SafeMathX.sol";
 import "../../utils/Arrays.sol";
+import "hardhat/console.sol";
 
 contract TokenPhaseLock is Context, Ownable, Initializable {
     using SafeBEP20 for IBEP20;
-    using Arrays for uint256[];
     using SafeMathX for uint256;
 
     mapping(address => mapping(string => PhaseLock)) private _phaseLocks;
 
     IBEP20 private _token;
 
-    /// Rep
     struct PhaseLock {
         string lockId;
         uint256 amount;
-        uint256 startTimestamp;
-        uint256[] unlockDates;
-        uint256[] unlockPercents;
-        uint256 nextUnlockIdx;
         uint256 withdrawnAmount;
+        uint32[] unlockDates;
+        uint32[] unlockPercents;
+        uint64 startTimestamp;
+        uint32 nextUnlockIdx;
         bool alreadyExists;
     }
 
@@ -43,13 +42,13 @@ contract TokenPhaseLock is Context, Ownable, Initializable {
         return _token;
     }
 
-    /// @return Returning a lock info
-    function getLock(string memory lockId)
+    /// @return
+    function getLock(address user_, string memory lockId_)
         public
         view
         returns (PhaseLock memory)
     {
-        PhaseLock memory lock = _phaseLocks[_msgSender()][lockId];
+        PhaseLock storage lock = _phaseLocks[user_][lockId_];
         return lock;
     }
 
@@ -69,30 +68,34 @@ contract TokenPhaseLock is Context, Ownable, Initializable {
         address user,
         string memory lockId,
         uint256 amount,
-        uint256[] memory unlockDates,
-        uint256[] memory unlockPercents
+        uint32[] memory unlockDates,
+        uint32[] memory unlockPercents,
+        uint64 startTimestamp
     ) public onlyOwner returns (bool) {
         require(
             !_phaseLocks[user][lockId].alreadyExists,
-            "TokenPhaseLock: Duplicated Lock Id"
+            "TokenPhaseLock: dup lock id"
         );
         require(
             unlockDates.length == unlockPercents.length,
-            "TokenPhaseLock: Unlock Dates and Unlock Percents length not match"
+            "TokenPhaseLock: unlock length not match"
         );
-        require(
-            unlockPercents.sum() == 100,
-            "TokenPhaseLock: Total Unlock Percents is not 100"
-        );
+
+        uint256 _sum = 0;
+        for (uint256 i = 0; i < unlockPercents.length; ++i) {
+            _sum += unlockPercents[i];
+        }
+
+        require(_sum == 100, "TokenPhaseLock: unlock percent not match 100");
 
         PhaseLock storage lock = _phaseLocks[user][lockId];
         lock.lockId = lockId;
         lock.amount = amount;
-        lock.startTimestamp = block.timestamp;
+        lock.withdrawnAmount = 0;
         lock.unlockDates = unlockDates;
         lock.unlockPercents = unlockPercents;
+        lock.startTimestamp = startTimestamp;
         lock.nextUnlockIdx = 0;
-        lock.withdrawnAmount = 0;
         lock.alreadyExists = true;
 
         return true;
@@ -111,31 +114,29 @@ contract TokenPhaseLock is Context, Ownable, Initializable {
     /// @return Return `true` if succeeds, otherwise `false`
     function release(string memory lockId) public returns (bool) {
         PhaseLock storage lock = _phaseLocks[_msgSender()][lockId];
+        uint256 numOfPhases = lock.unlockPercents.length;
 
+        require(lock.alreadyExists, "TokenPhaseLock: lock not exists");
         require(
-            lock.alreadyExists,
-            "TokenPhaseLock: Can't withdraw tokens from a lock that doesn't exists"
-        );
-        require(
-            lock.nextUnlockIdx < lock.unlockPercents.length,
-            "TokenPhaseLock: All lock phases are released"
+            lock.nextUnlockIdx < numOfPhases,
+            "TokenPhaseLock: all phases are released"
         );
         require(
             block.timestamp >=
                 lock.startTimestamp +
                     lock.unlockDates[lock.nextUnlockIdx] *
                     1 days,
-            "TokenPhaseLock: Not meet next unlock requirements"
+            "TokenPhaseLock: next phase unavailable"
         );
 
         uint256 availableWithdrawAmount = 0;
         while (
-            lock.nextUnlockIdx < lock.unlockPercents.length &&
+            lock.nextUnlockIdx < numOfPhases &&
             block.timestamp >=
             lock.startTimestamp + lock.unlockDates[lock.nextUnlockIdx] * 1 days
         ) {
             uint256 stepWithdrawAmount = 0;
-            if (lock.nextUnlockIdx == lock.unlockPercents.length - 1) {
+            if (lock.nextUnlockIdx == numOfPhases - 1) {
                 stepWithdrawAmount =
                     lock.amount -
                     lock.withdrawnAmount -
@@ -154,7 +155,7 @@ contract TokenPhaseLock is Context, Ownable, Initializable {
         uint256 balance = token().balanceOf(address(this));
         require(
             balance >= availableWithdrawAmount,
-            "TokenPhaseLock: Insufficient balance to withdraw"
+            "TokenPhaseLock: insufficient balance"
         );
         lock.withdrawnAmount += availableWithdrawAmount;
         token().safeTransfer(_msgSender(), availableWithdrawAmount);
