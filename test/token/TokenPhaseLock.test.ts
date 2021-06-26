@@ -1,7 +1,24 @@
 import { expect } from 'chai';
-import { ethers, waffle } from 'hardhat';
+import { ethers, waffle, deployments } from 'hardhat';
 import { Contract, BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signers';
+
+const now = async () => {
+  return (await ethers.provider.getBlock('latest')).timestamp;
+};
+
+// const setupTest = deployments.createFixture(async ({deployments, getNamedAccounts, ethers}, options) => {
+//   await deployments.fixture(); // ensure you start from a fresh deployments
+//   const { tokenOwner } = await getNamedAccounts();
+//   const TokenContract = await ethers.getContract("Token", tokenOwner);
+//   await TokenContract.mint(10).then(tx => tx.wait()); //this mint is executed once and then `createFixture` will ensure it is snapshotted
+//   return {
+//     tokenOwner: {
+//       address: tokenOwner,
+//       TokenContract
+//     }
+//   };
+// };
 
 describe('TokenPhaseLock', function () {
   let coinContract: Contract;
@@ -10,13 +27,10 @@ describe('TokenPhaseLock', function () {
   let addr1: SignerWithAddress;
 
   beforeEach(async function () {
+    await deployments.fixture(['TokenPhaseLock']);
     [owner, addr1] = await ethers.getSigners();
-    const coinFactory = await ethers.getContractFactory('CoinBHO');
-    const lockFactory = await ethers.getContractFactory('TokenPhaseLock');
-    coinContract = await coinFactory.deploy();
-    await coinContract.deployed();
-    lockContract = await lockFactory.deploy(coinContract.address);
-    await lockContract.deployed();
+    coinContract = await ethers.getContract('CoinBHO');
+    lockContract = await ethers.getContract('TokenPhaseLock');
   });
 
   describe('register new lock', function () {
@@ -26,35 +40,24 @@ describe('TokenPhaseLock', function () {
         '1',
         10,
         [1, 2, 3, 4, 5],
-        [20, 20, 20, 20, 20]
+        [20, 20, 20, 20, 20],
+        await now()
       );
       const [
         lockId,
         amount,
-        startTimestamp,
+        widthdrawnAmount,
         unlockDates,
         unlockPercents,
+        startTimestamp,
         nextUnlockIdx,
-        widthdrawnAmount,
         alreadyExists,
-      ] = await lockContract.getLock('1');
+      ] = await lockContract.getLock(owner.address, '1');
 
       expect(lockId).to.equal('1');
       expect(amount).to.equal(10);
-      expect(unlockDates).to.deep.equal([
-        BigNumber.from(1),
-        BigNumber.from(2),
-        BigNumber.from(3),
-        BigNumber.from(4),
-        BigNumber.from(5),
-      ]);
-      expect(unlockPercents).to.deep.equal([
-        BigNumber.from(20),
-        BigNumber.from(20),
-        BigNumber.from(20),
-        BigNumber.from(20),
-        BigNumber.from(20),
-      ]);
+      expect(unlockDates).to.deep.equal([1, 2, 3, 4, 5]);
+      expect(unlockPercents).to.deep.equal([20, 20, 20, 20, 20]);
       expect(nextUnlockIdx).to.equal(0);
       expect(widthdrawnAmount).to.equal(0);
       expect(alreadyExists).to.equal(true);
@@ -66,7 +69,8 @@ describe('TokenPhaseLock', function () {
         '1',
         10,
         [1, 2, 3, 4, 5],
-        [20, 20, 20, 20, 20]
+        [20, 20, 20, 20, 20],
+        await now()
       );
       await expect(
         lockContract.registerNewLock(
@@ -74,9 +78,10 @@ describe('TokenPhaseLock', function () {
           '1',
           5,
           [1, 2, 3, 4, 5],
-          [20, 20, 20, 20, 20]
+          [20, 20, 20, 20, 20],
+          await now()
         )
-      ).to.be.revertedWith('TokenPhaseLock: Duplicated Lock Id');
+      ).to.be.revertedWith('TokenPhaseLock: dup lock id');
     });
 
     it('should revert when unlock percents and unlock dates length not match', async function () {
@@ -86,11 +91,10 @@ describe('TokenPhaseLock', function () {
           '1',
           10,
           [2, 3, 4, 5],
-          [20, 20, 20, 20, 20]
+          [20, 20, 20, 20, 20],
+          await now()
         )
-      ).to.revertedWith(
-        'TokenPhaseLock: Unlock Dates and Unlock Percents length not match'
-      );
+      ).to.revertedWith('TokenPhaseLock: unlock length not match');
     });
 
     it('should revert when total unlock percents not 100', async function () {
@@ -100,9 +104,10 @@ describe('TokenPhaseLock', function () {
           '1',
           10,
           [1, 2, 3, 4, 5],
-          [20, 20, 20, 20, 50]
+          [20, 20, 20, 20, 50],
+          await now()
         )
-      ).to.revertedWith('TokenPhaseLock: Total Unlock Percents is not 100');
+      ).to.revertedWith('TokenPhaseLock: unlock percent not match 100');
     });
 
     it('should revert if called from not owner', async function () {
@@ -114,7 +119,8 @@ describe('TokenPhaseLock', function () {
             '1',
             10,
             [1, 2, 3, 4, 5],
-            [20, 20, 20, 20, 20]
+            [20, 20, 20, 20, 20],
+            await now()
           )
       ).to.be.revertedWith('Ownable: caller is not the owner');
     });
@@ -127,7 +133,8 @@ describe('TokenPhaseLock', function () {
         '1',
         100,
         [1, 2, 3, 4, 5],
-        [20, 20, 10, 25, 25]
+        [20, 20, 10, 25, 25],
+        await now()
       );
       await coinContract.transfer(lockContract.address, 100);
 
@@ -149,7 +156,7 @@ describe('TokenPhaseLock', function () {
 
     it('should revert when attempt to release not existed lock', async function () {
       await expect(lockContract.release('1')).to.be.revertedWith(
-        "TokenPhaseLock: Can't withdraw tokens from a lock that doesn't exists"
+        'TokenPhaseLock: lock not exists'
       );
     });
 
@@ -159,12 +166,13 @@ describe('TokenPhaseLock', function () {
         '1',
         100,
         [1, 2, 3, 4, 5],
-        [20, 20, 10, 25, 25]
+        [20, 20, 10, 25, 25],
+        await now()
       );
       await coinContract.transfer(lockContract.address, 100);
 
       await expect(lockContract.connect(addr1).release('1')).to.be.revertedWith(
-        'TokenPhaseLock: Not meet next unlock requirements'
+        'TokenPhaseLock: next phase unavailable'
       );
 
       // Release 1st phase
@@ -173,7 +181,7 @@ describe('TokenPhaseLock', function () {
 
       // Should revert if users try to release 2nd phase
       await expect(lockContract.connect(addr1).release('1')).to.be.revertedWith(
-        'TokenPhaseLock: Not meet next unlock requirements'
+        'TokenPhaseLock: next phase unavailable'
       );
 
       // Release 2nd, 3rd, 4th phase
@@ -182,7 +190,7 @@ describe('TokenPhaseLock', function () {
 
       // Should revert if users try to release 5th phase
       await expect(lockContract.connect(addr1).release('1')).to.be.revertedWith(
-        'TokenPhaseLock: Not meet next unlock requirements'
+        'TokenPhaseLock: next phase unavailable'
       );
     });
 
@@ -192,7 +200,8 @@ describe('TokenPhaseLock', function () {
         '1',
         100,
         [1, 2, 3, 4, 5],
-        [20, 20, 20, 20, 20]
+        [20, 20, 20, 20, 20],
+        await now()
       );
       await coinContract.transfer(lockContract.address, 100);
 
@@ -201,7 +210,7 @@ describe('TokenPhaseLock', function () {
       await lockContract.connect(addr1).release('1');
 
       await expect(lockContract.connect(addr1).release('1')).to.be.revertedWith(
-        'TokenPhaseLock: All lock phases are released'
+        'TokenPhaseLock: all phases are released'
       );
     });
 
@@ -211,13 +220,14 @@ describe('TokenPhaseLock', function () {
         '1',
         100,
         [1, 2, 3, 4, 5],
-        [20, 20, 20, 20, 20]
+        [20, 20, 20, 20, 20],
+        await now()
       );
       await coinContract.transfer(lockContract.address, 50);
       // Release all phases
       ethers.provider.send('evm_increaseTime', [3600 * 24 * 5]);
       await expect(lockContract.connect(addr1).release('1')).to.be.revertedWith(
-        'TokenPhaseLock: Insufficient balance to withdraw'
+        'TokenPhaseLock: insufficient balance'
       );
     });
   });

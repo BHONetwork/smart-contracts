@@ -1,22 +1,21 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signers';
 import { expect } from 'chai';
 import type { Contract, ContractFactory } from 'ethers';
-import { ethers } from 'hardhat';
+import { ethers, deployments } from 'hardhat';
 
 const { BigNumber } = ethers;
 
 describe('CoinBHO', () => {
-  let coinContractFactory: ContractFactory;
   let coinContract: Contract;
   let owner: SignerWithAddress;
   let addr1: SignerWithAddress;
   let addr2: SignerWithAddress;
 
   beforeEach(async () => {
+    await deployments.fixture(['TokenPhaseLock']);
     [owner, addr1, addr2] = await ethers.getSigners();
-    coinContractFactory = await ethers.getContractFactory('CoinBHO');
-    coinContract = await coinContractFactory.deploy();
-    await coinContract.deployed();
+    [owner, addr1] = await ethers.getSigners();
+    coinContract = await ethers.getContract('CoinBHO');
   });
 
   describe('Deployment', function () {

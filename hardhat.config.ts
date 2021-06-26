@@ -26,7 +26,22 @@ task('accounts', 'Prints the list of accounts', async (args, hre) => {
  * @type import('hardhat/config').HardhatUserConfig
  */
 const config: HardhatUserConfig = {
-  solidity: '0.8.4',
+  solidity: {
+    version: '0.8.4',
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 1000,
+      },
+    },
+  },
+  gasReporter: {
+    currency: 'USD',
+    coinmarketcap: '6932a382-08a0-41ef-86c7-2773dd0bd2f0',
+    gasPrice: 10,
+    // @ts-ignore
+    ethPrice: 300,
+  },
   networks: {
     'bsc-testnet': {
       url: 'https://data-seed-prebsc-1-s1.binance.org:8545',
