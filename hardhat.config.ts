@@ -28,12 +28,6 @@ task('accounts', 'Prints the list of accounts', async (args, hre) => {
 const config: HardhatUserConfig = {
   solidity: {
     version: '0.8.4',
-    settings: {
-      optimizer: {
-        enabled: true,
-        runs: 1000,
-      },
-    },
   },
   gasReporter: {
     currency: 'USD',
@@ -49,6 +43,10 @@ const config: HardhatUserConfig = {
       live: true,
       tags: ['staging'],
       chainId: 97,
+    },
+    'bsc-mainnet': {
+      url: 'https://bsc-dataseed.binance.org/',
+      accounts: [process.env.BSC_MAINNET_PRIVATE_KEY as string],
     },
   },
   etherscan: {
