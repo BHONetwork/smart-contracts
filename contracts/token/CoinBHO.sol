@@ -215,6 +215,25 @@ contract CoinBHO is Context, IBEP20, Ownable {
     }
 
     /**
+     * @dev Burn `amount` tokens
+     *
+     * Requirements
+     * - `msg.sender` must have a balance of at least `amount`
+     */
+    function burn(uint256 amount) public returns (bool) {
+        _burn(_msgSender(), amount);
+        return true;
+    }
+
+    /**
+     * @dev Burn `amount` tokens of `account` from allowed sender
+     */
+    function burnFrom(address account, uint256 amount) public returns (bool) {
+        _burnFrom(account, amount);
+        return true;
+    }
+
+    /**
      * @dev Moves tokens `amount` from `sender` to `recipient`.
      *
      * This is internal function is equivalent to {transfer}, and can be used to

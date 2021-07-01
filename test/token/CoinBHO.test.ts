@@ -89,5 +89,40 @@ describe('CoinBHO', () => {
       const addr2Balance = await coinContract.balanceOf(addr2.address);
       expect(addr2Balance).to.equal(50);
     });
+
+    it('should reduce total supply when burn', async function () {
+      const initialOwnerBalance = await coinContract.balanceOf(owner.address);
+      const burnAmount = 1_000_000_000;
+      await coinContract.burn(burnAmount);
+      const totalSupply = await coinContract.totalSupply();
+      expect(totalSupply).to.equal(
+        BigNumber.from(initialOwnerBalance).sub(burnAmount)
+      );
+    });
+
+    it('should revert when burn amount exceeds balance', async function () {
+      const initialOwnerBalance = await coinContract.balanceOf(owner.address);
+      const burnAmount = BigNumber.from(initialOwnerBalance).add(1_000_000);
+      await expect(coinContract.burn(burnAmount)).to.revertedWith(
+        'BEP20: burn amount exceeds balance'
+      );
+    });
+
+    it('should increase total supply when mint', async function () {
+      const initialOwnerBalance = await coinContract.balanceOf(owner.address);
+      const mintAmount = 1_000_000_000;
+      await coinContract.mint(mintAmount);
+      const totalSupply = await coinContract.totalSupply();
+      expect(totalSupply).to.equal(
+        BigNumber.from(initialOwnerBalance).add(mintAmount)
+      );
+    });
+
+    it('should revert when minting from stranger', async function () {
+      const mintAmount = 1_000_000_000;
+      await expect(
+        coinContract.connect(addr1).mint(mintAmount)
+      ).to.revertedWith('Ownable: caller is not the owner');
+    });
   });
 });
