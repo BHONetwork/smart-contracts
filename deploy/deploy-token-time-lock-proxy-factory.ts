@@ -3,15 +3,15 @@ import { DeployFunction } from 'hardhat-deploy/types';
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts } = hre;
-  const { deploy, log } = deployments;
+  const { deploy } = deployments;
   const { deployer } = await getNamedAccounts();
-  const deployResult = await deploy('CoinBHO', {
+  const deployResult = await deploy('TokenTimeLockProxyFactory', {
     from: deployer,
     args: [],
     log: true,
   });
 };
 
-func.tags = ['coin-bho', 'main-suite'];
+func.tags = ['token-time-lock-proxy-factory', 'main-suite'];
 
 export default func;

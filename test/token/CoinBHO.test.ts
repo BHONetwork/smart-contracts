@@ -12,10 +12,11 @@ describe('CoinBHO', () => {
   let addr2: SignerWithAddress;
 
   beforeEach(async () => {
-    await deployments.fixture(['TokenPhaseLock']);
+    await deployments.fixture(['coin-bho']);
     [owner, addr1, addr2] = await ethers.getSigners();
     [owner, addr1] = await ethers.getSigners();
     coinContract = await ethers.getContract('CoinBHO');
+    await coinContract.deployed();
   });
 
   describe('Deployment', function () {
