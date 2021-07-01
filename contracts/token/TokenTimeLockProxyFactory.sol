@@ -4,14 +4,10 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
 import "./TokenTimeLock.sol";
-import "hardhat/console.sol";
 
 contract TokenTimeLockProxyFactory is Ownable {
-    using Address for address;
-
-    event ProxyCreated(address proxy);
+    event ProxyCreated(address proxy, address singleton);
 
     function createProxy(
         address lock,
@@ -33,7 +29,7 @@ contract TokenTimeLockProxyFactory is Ownable {
         );
         require(setupResult, "TokenTimeLockProxy: can't setup");
 
-        emit ProxyCreated(proxy);
+        emit ProxyCreated(proxy, lock);
 
         return proxy;
     }

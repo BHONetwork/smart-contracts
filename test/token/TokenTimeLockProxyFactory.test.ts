@@ -77,18 +77,16 @@ describe('TokenTimeLockProxyFactory', async function () {
 
   describe('interact with proxy once created', async function () {
     it('should return correct lock state', async function () {
-      const tx: ContractTransaction =
-        await lockProxyFactoryContract.createProxy(
-          lockContract.address,
-          owner.address,
-          coinContract.address,
-          100,
-          [60, 120],
-          [50, 50],
-          await latestBlockTimestamp()
-        );
-      const receipt = await tx.wait();
-      const [proxyAddr] = receipt.events?.[0]!.args!;
+      const proxyAddr = await getProxyAddr(
+        lockProxyFactoryContract,
+        lockContract.address,
+        owner.address,
+        coinContract.address,
+        100,
+        [60, 120],
+        [50, 50],
+        await latestBlockTimestamp()
+      );
       const proxyContract = lockContract.attach(proxyAddr);
 
       await shouldLockStateCorrect(
@@ -105,32 +103,28 @@ describe('TokenTimeLockProxyFactory', async function () {
 
     it('two proxies should have different lock state', async function () {
       // First proxy
-      const tx: ContractTransaction =
-        await lockProxyFactoryContract.createProxy(
-          lockContract.address,
-          owner.address,
-          coinContract.address,
-          100,
-          [60, 120],
-          [50, 50],
-          await latestBlockTimestamp()
-        );
-      const receipt = await tx.wait();
-      const [proxyAddr1] = receipt.events?.[0]!.args!;
+      const proxyAddr1 = await getProxyAddr(
+        lockProxyFactoryContract,
+        lockContract.address,
+        owner.address,
+        coinContract.address,
+        100,
+        [60, 120],
+        [50, 50],
+        await latestBlockTimestamp()
+      );
 
       // Second proxy
-      const tx2: ContractTransaction =
-        await lockProxyFactoryContract.createProxy(
-          lockContract.address,
-          owner.address,
-          coinContract.address,
-          120,
-          [50, 100],
-          [60, 40],
-          await latestBlockTimestamp()
-        );
-      const receipt2 = await tx2.wait();
-      const [proxyAddr2] = receipt2.events?.[0]!.args!;
+      const proxyAddr2 = await getProxyAddr(
+        lockProxyFactoryContract,
+        lockContract.address,
+        owner.address,
+        coinContract.address,
+        120,
+        [50, 100],
+        [60, 40],
+        await latestBlockTimestamp()
+      );
 
       const proxyContract1 = lockContract.attach(proxyAddr1);
       const proxyContract2 = lockContract.attach(proxyAddr2);
@@ -191,4 +185,30 @@ async function shouldLockStateCorrect(
   expect(_lockDurations).deep.equal(lockDuration);
   expect(_releasePercents).deep.equal(releasePercents);
   expect(_nextReleaseIdx).to.equal(nextReleaseIdx);
+}
+
+async function getProxyAddr(
+  factoryContract: Contract,
+  lockContractAddr: string,
+  userAddr: string,
+  coinContractAddr: string,
+  amount: number,
+  lockDurations: number[],
+  releasePercents: number[],
+  startDate: number
+): Promise<string> {
+  const tx: ContractTransaction = await factoryContract.createProxy(
+    lockContractAddr,
+    userAddr,
+    coinContractAddr,
+    amount,
+    lockDurations,
+    releasePercents,
+    startDate
+  );
+  const receipt = await tx.wait();
+  const [event] = receipt.events!.filter((evt) => evt.event === 'ProxyCreated');
+  const [proxyAddr1] = event?.args!;
+
+  return proxyAddr1;
 }

@@ -6,7 +6,6 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "./BEP20/IBEP20.sol";
 import "./BEP20/SafeBEP20.sol";
 import "../math/SafeMathX.sol";
-import "hardhat/console.sol";
 
 contract TokenTimeLock is Context, Ownable {
     using SafeBEP20 for IBEP20;
@@ -51,31 +50,63 @@ contract TokenTimeLock is Context, Ownable {
         return IBEP20(_token);
     }
 
+    function beneficiary() public view returns (address) {
+        return _user;
+    }
+
+    function amount() public view returns (uint256) {
+        return _amount;
+    }
+
+    function releasedAmount() public view returns (uint256) {
+        return _releasedAmount;
+    }
+
+    function startDate() public view returns (uint64) {
+        return _startDate;
+    }
+
+    function lockDurations() public view returns (uint32[] memory) {
+        return _lockDurations;
+    }
+
+    function releasePercents() public view returns (uint32[] memory) {
+        return _releasePercents;
+    }
+
+    function releaseDates() public view returns (uint64[] memory) {
+        return _releaseDates;
+    }
+
+    function nextReleaseIdx() public view returns (uint32) {
+        return _nextReleaseIdx;
+    }
+
     function lockData()
         public
         view
         returns (
             address user,
             address token_,
-            uint256 amount,
-            uint256 releasedAmount,
-            uint64 startDate,
-            uint32[] memory lockDurations,
-            uint32[] memory releasePercents,
-            uint64[] memory releaseDates,
-            uint32 nextReleaseIdx
+            uint256 amount_,
+            uint256 releasedAmount_,
+            uint64 startDate_,
+            uint32[] memory lockDurations_,
+            uint32[] memory releasePercents_,
+            uint64[] memory releaseDates_,
+            uint32 nextReleaseIdx_
         )
     {
         return (
-            _user,
-            _token,
-            _amount,
-            _releasedAmount,
-            _startDate,
-            _lockDurations,
-            _releasePercents,
-            _releaseDates,
-            _nextReleaseIdx
+            beneficiary(),
+            address(token()),
+            amount(),
+            releasedAmount(),
+            startDate(),
+            lockDurations(),
+            releasePercents(),
+            releaseDates(),
+            nextReleaseIdx()
         );
     }
 
