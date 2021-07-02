@@ -1,13 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/utils/Context.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import "./BEP20/IBEP20.sol";
 import "./BEP20/SafeBEP20.sol";
 import "../math/SafeMathX.sol";
 
-contract TokenTimeLock is Context, Ownable {
+contract TokenTimeLock is
+    Initializable,
+    ContextUpgradeable,
+    OwnableUpgradeable
+{
     using SafeBEP20 for IBEP20;
     using SafeMathX for uint256;
 
@@ -45,6 +50,8 @@ contract TokenTimeLock is Context, Ownable {
         uint32 toIdx,
         uint64 date
     );
+
+    event SafetyReleaseActivated(uint256 amount, address to, uint64 date);
 
     function token() public view returns (IBEP20) {
         return IBEP20(_token);
@@ -115,14 +122,18 @@ contract TokenTimeLock is Context, Ownable {
     /// - Duplicated lock id for a user.
     /// - `lockDurations` and `unlockPercents` length don't match.
     /// - `unlockPercents` sum is not equal to 100 (100%).
-    function setup(
+    function initialize(
+        address owner_,
         address user_,
         address token_,
         uint256 amount_,
         uint32[] calldata lockDurations_,
         uint32[] calldata releasePercents_,
         uint64 startDate_
-    ) public returns (bool) {
+    ) public initializer returns (bool) {
+        __Context_init_unchained();
+        __Ownable_init_unchained();
+
         require(
             lockDurations_.length == releasePercents_.length,
             "TokenTimeLock: unlock length not match"
@@ -144,6 +155,8 @@ contract TokenTimeLock is Context, Ownable {
         _releasedAmount = 0;
         _nextReleaseIdx = 0;
         _releaseDates = new uint64[](_lockDurations.length);
+
+        transferOwnership(owner_);
 
         return true;
     }
@@ -201,7 +214,7 @@ contract TokenTimeLock is Context, Ownable {
             "TokenTimeLock: insufficient balance"
         );
         _releasedAmount += availableReleaseAmount;
-        token().safeTransfer(_msgSender(), availableReleaseAmount);
+        token().safeTransfer(beneficiary(), availableReleaseAmount);
 
         uint64 releaseDate = uint64(block.timestamp);
 
@@ -217,6 +230,16 @@ contract TokenTimeLock is Context, Ownable {
             releaseDate
         );
 
+        return true;
+    }
+
+    /// @dev This is for safety.
+    /// For example, when someone setup the contract with wrong data and accidentally transfer token to the lockup contract.
+    /// The owner can get the token back by calling this function
+    function safetyRelease() public onlyOwner returns (bool) {
+        uint256 balance = token().balanceOf(address(this));
+        token().safeTransfer(owner(), balance);
+        emit SafetyReleaseActivated(balance, owner(), uint64(block.timestamp));
         return true;
     }
 }

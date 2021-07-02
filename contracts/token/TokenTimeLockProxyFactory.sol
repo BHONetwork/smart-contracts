@@ -7,9 +7,14 @@ import "@openzeppelin/contracts/proxy/Clones.sol";
 import "./TokenTimeLock.sol";
 
 contract TokenTimeLockProxyFactory is Ownable {
-    event ProxyCreated(address proxy, address singleton);
+    event ProxyCreated(
+        address proxy,
+        address implementation,
+        address proxyOwner
+    );
 
     function createProxy(
+        address owner_,
         address lock,
         address user_,
         address token_,
@@ -19,7 +24,8 @@ contract TokenTimeLockProxyFactory is Ownable {
         uint64 startDate_
     ) public returns (address) {
         address proxy = Clones.clone(lock);
-        bool setupResult = TokenTimeLock(proxy).setup(
+        bool setupResult = TokenTimeLock(proxy).initialize(
+            owner_,
             user_,
             token_,
             amount_,
@@ -29,7 +35,7 @@ contract TokenTimeLockProxyFactory is Ownable {
         );
         require(setupResult, "TokenTimeLockProxy: can't setup");
 
-        emit ProxyCreated(proxy, lock);
+        emit ProxyCreated(proxy, lock, owner_);
 
         return proxy;
     }
