@@ -108,6 +108,29 @@ describe('CoinBHO', () => {
       );
     });
 
+    it('should revert when burnFrom amount exceeds allowance', async function () {
+      await coinContract.approve(addr1.address, 100);
+      await expect(coinContract.connect(addr1).burnFrom(owner.address, 200)).to
+        .reverted;
+    });
+
+    it('should burnFrom really burn tokens, reduce allowance, reduce total supply', async function () {
+      const burnAmount = 100;
+      await coinContract.approve(addr1.address, burnAmount);
+      const ownerBalance = await coinContract.balanceOf(owner.address);
+
+      await coinContract.connect(addr1).burnFrom(owner.address, burnAmount);
+      expect(
+        await coinContract.allowance(owner.address, addr1.address)
+      ).to.equal(0);
+      expect(await coinContract.balanceOf(owner.address)).to.equal(
+        BigNumber.from(ownerBalance).sub(burnAmount)
+      );
+      expect(await coinContract.totalSupply()).to.equal(
+        BigNumber.from(ownerBalance).sub(burnAmount)
+      );
+    });
+
     it('should increase total supply when mint', async function () {
       const initialOwnerBalance = await coinContract.balanceOf(owner.address);
       const mintAmount = 1_000_000_000;
