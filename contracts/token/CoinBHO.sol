@@ -1,11 +1,12 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "./BEP20/IBEP20.sol";
 
-contract CoinBHO is Context, IBEP20, Ownable {
+contract CoinBHO is OwnableUpgradeable, UUPSUpgradeable, IBEP20 {
     using SafeMath for uint256;
 
     mapping(address => uint256) private _balances;
@@ -17,7 +18,10 @@ contract CoinBHO is Context, IBEP20, Ownable {
     string private _symbol;
     string private _name;
 
-    constructor() {
+    function initialize() public initializer returns (bool) {
+        __Ownable_init();
+        __UUPSUpgradeable_init();
+
         _name = "Bholdus Token";
         _symbol = "BHO";
         _decimals = 18;
@@ -25,6 +29,8 @@ contract CoinBHO is Context, IBEP20, Ownable {
         _balances[msg.sender] = _totalSupply;
 
         emit Transfer(address(0), msg.sender, _totalSupply);
+
+        return true;
     }
 
     /**
@@ -73,6 +79,12 @@ contract CoinBHO is Context, IBEP20, Ownable {
     {
         return _balances[account];
     }
+
+    function _authorizeUpgrade(address newImplementation)
+        internal
+        override
+        onlyOwner
+    {}
 
     /**
      * @dev See {BEP20-transfer}.

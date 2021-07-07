@@ -250,6 +250,31 @@ describe('TokenTimeLock', function () {
         .withArgs(80, 100, 1, 4, releaseDates[1]);
     });
 
+    it('just to check what maximum gas that release all phases at a time', async function () {
+      await lockContract.initialize(
+        owner.address,
+        addr1.address,
+        coinContract.address,
+        100,
+        [
+          daysToSeconds(1),
+          daysToSeconds(2),
+          daysToSeconds(3),
+          daysToSeconds(4),
+          daysToSeconds(5),
+        ],
+        [20, 20, 10, 25, 25],
+        await latestBlockTimestamp()
+      );
+
+      await coinContract.transfer(lockContract.address, 100);
+
+      ethers.provider.send('evm_increaseTime', [3600 * 24 * 10]);
+      await lockContract.release();
+
+      expect(await coinContract.balanceOf(addr1.address)).to.equal(100);
+    });
+
     it('should set release dates correct', async function () {
       await lockContract.initialize(
         owner.address,

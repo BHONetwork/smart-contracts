@@ -2,17 +2,11 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import "./BEP20/IBEP20.sol";
 import "./BEP20/SafeBEP20.sol";
 import "../math/SafeMathX.sol";
 
-contract TokenTimeLock is
-    Initializable,
-    ContextUpgradeable,
-    OwnableUpgradeable
-{
+contract TokenTimeLock is OwnableUpgradeable {
     using SafeBEP20 for IBEP20;
     using SafeMathX for uint256;
 
@@ -131,8 +125,7 @@ contract TokenTimeLock is
         uint32[] calldata releasePercents_,
         uint64 startDate_
     ) public initializer returns (bool) {
-        __Context_init_unchained();
-        __Ownable_init_unchained();
+        __Ownable_init();
 
         require(
             lockDurations_.length == releasePercents_.length,

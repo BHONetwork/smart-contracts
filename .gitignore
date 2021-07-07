@@ -5,3 +5,5 @@ cache
 artifacts
 
 .env
+
+contract-abi.json

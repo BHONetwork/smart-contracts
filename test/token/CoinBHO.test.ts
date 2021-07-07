@@ -43,15 +43,19 @@ describe('CoinBHO', () => {
   describe('Transactions', function () {
     it('Should transfer tokens between accounts', async function () {
       // Transfer 50 tokens from owner to addr1
-      await coinContract.transfer(addr1.address, 50);
+      const decimals = await coinContract.decimals();
+      const transferAmount = BigNumber.from(10_000_000).mul(
+        BigNumber.from(10).pow(decimals)
+      );
+      await coinContract.transfer(addr1.address, transferAmount);
       const addr1Balance = await coinContract.balanceOf(addr1.address);
-      expect(addr1Balance).to.equal(50);
+      expect(addr1Balance).to.equal(transferAmount);
 
       // Transfer 50 tokens from addr1 to addr2
       // We use .connect(signer) to send a transaction from another account
-      await coinContract.connect(addr1).transfer(addr2.address, 50);
+      await coinContract.connect(addr1).transfer(addr2.address, transferAmount);
       const addr2Balance = await coinContract.balanceOf(addr2.address);
-      expect(addr2Balance).to.equal(50);
+      expect(addr2Balance).to.equal(transferAmount);
     });
 
     it('Should fail if sender doesn’t have enough tokens', async function () {
