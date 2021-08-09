@@ -12,7 +12,7 @@ describe('CoinBHO', () => {
   let addr2: SignerWithAddress;
 
   beforeEach(async () => {
-    await deployments.fixture(['coin-bho']);
+    await deployments.fixture(['coin-bho-v2']);
     [owner, addr1, addr2] = await ethers.getSigners();
     [owner, addr1] = await ethers.getSigners();
     coinContract = await ethers.getContract('CoinBHO');
@@ -138,7 +138,7 @@ describe('CoinBHO', () => {
     it('should increase total supply when mint', async function () {
       const initialOwnerBalance = await coinContract.balanceOf(owner.address);
       const mintAmount = 1_000_000_000;
-      await coinContract.mint(mintAmount);
+      await coinContract['mint(uint256)'](mintAmount);
       const totalSupply = await coinContract.totalSupply();
       expect(totalSupply).to.equal(
         BigNumber.from(initialOwnerBalance).add(mintAmount)
@@ -148,8 +148,45 @@ describe('CoinBHO', () => {
     it('should revert when minting from stranger', async function () {
       const mintAmount = 1_000_000_000;
       await expect(
-        coinContract.connect(addr1).mint(mintAmount)
+        coinContract.connect(addr1)['mint(uint256)'](mintAmount)
       ).to.revertedWith('Ownable: caller is not the owner');
+    });
+
+    it('CoinBHOV2 should revert when call initialize_v2 more than once', async function () {
+      await expect(coinContract.initialize_v2()).to.revertedWith(
+        'CoinBHOV2: already initialized'
+      );
+    });
+
+    it('CoinBHOV2: only minter can mint', async function () {
+      const mintAmount = 1_000_000_000;
+      await coinContract.grantRole(coinContract.MINTER_ROLE(), owner.address);
+      await expect(
+        coinContract
+          .connect(owner)
+          ['mint(address,uint256)'](owner.address, mintAmount)
+      ).to.not.reverted;
+
+      await expect(
+        coinContract
+          .connect(addr1)
+          ['mint(address,uint256)'](addr1.address, mintAmount)
+      ).to.reverted;
+    });
+
+    it('CoinBHOV2: should increase total supply when mint', async function () {
+      const mintAmount = 1_000_000_000;
+      const initialOwnerBalance = await coinContract.balanceOf(owner.address);
+      await coinContract.grantRole(coinContract.MINTER_ROLE(), owner.address);
+      await expect(
+        coinContract
+          .connect(owner)
+          ['mint(address,uint256)'](owner.address, mintAmount)
+      ).to.not.reverted;
+      const totalSupply = await coinContract.totalSupply();
+      expect(totalSupply).to.equal(
+        BigNumber.from(initialOwnerBalance).add(mintAmount)
+      );
     });
   });
 });
