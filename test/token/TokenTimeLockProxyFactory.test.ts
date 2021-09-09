@@ -7,7 +7,7 @@ import {
   ContractTransaction,
 } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signers';
-import { latestBlockTimestamp } from '../../utils';
+import { EthUtils } from '../../utils';
 
 describe('TokenTimeLockProxyFactory', async function () {
   let lockProxyFactoryContract: Contract;
@@ -42,7 +42,7 @@ describe('TokenTimeLockProxyFactory', async function () {
           100,
           [60, 120],
           [50, 50],
-          await latestBlockTimestamp()
+          await EthUtils.latestBlockTimestamp()
         )
       ).to.reverted;
     });
@@ -57,7 +57,7 @@ describe('TokenTimeLockProxyFactory', async function () {
           100,
           [60, 120],
           [50],
-          await latestBlockTimestamp()
+          await EthUtils.latestBlockTimestamp()
         )
       ).to.reverted;
     });
@@ -72,7 +72,7 @@ describe('TokenTimeLockProxyFactory', async function () {
           100,
           [60, 120],
           [50, 50],
-          await latestBlockTimestamp()
+          await EthUtils.latestBlockTimestamp()
         )
       ).to.emit(lockProxyFactoryContract, 'ProxyCreated');
     });
@@ -87,7 +87,7 @@ describe('TokenTimeLockProxyFactory', async function () {
         100,
         [60, 120],
         [50, 50],
-        await latestBlockTimestamp()
+        await EthUtils.latestBlockTimestamp()
       );
       const proxyContract = lockContract.attach(proxyAddr);
 
@@ -106,7 +106,7 @@ describe('TokenTimeLockProxyFactory', async function () {
         100,
         [60, 120],
         [50, 50],
-        await latestBlockTimestamp()
+        await EthUtils.latestBlockTimestamp()
       );
       const proxyContract = lockContract.attach(proxyAddr);
 
@@ -133,7 +133,7 @@ describe('TokenTimeLockProxyFactory', async function () {
         100,
         [60, 120],
         [50, 50],
-        await latestBlockTimestamp()
+        await EthUtils.latestBlockTimestamp()
       );
 
       // Second proxy
@@ -146,7 +146,7 @@ describe('TokenTimeLockProxyFactory', async function () {
         120,
         [50, 100],
         [60, 40],
-        await latestBlockTimestamp()
+        await EthUtils.latestBlockTimestamp()
       );
 
       const proxyContract1 = lockContract.attach(proxyAddr1);

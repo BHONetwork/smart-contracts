@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import { ethers, waffle, deployments } from 'hardhat';
 import { Contract, BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signers';
-import { latestBlockTimestamp, daysToSeconds } from '../../utils';
+import { EthUtils, daysToSeconds } from '../../utils';
 
 describe('TokenTimeLock', function () {
   let coinContract: Contract;
@@ -34,7 +34,7 @@ describe('TokenTimeLock', function () {
           daysToSeconds(5),
         ],
         [20, 20, 20, 20, 20],
-        await latestBlockTimestamp()
+        await EthUtils.latestBlockTimestamp()
       );
       const [
         user,
@@ -76,7 +76,7 @@ describe('TokenTimeLock', function () {
             daysToSeconds(5),
           ],
           [20, 20, 20, 20],
-          await latestBlockTimestamp()
+          await EthUtils.latestBlockTimestamp()
         )
       ).to.revertedWith('TokenTimeLock: unlock length not match');
     });
@@ -96,7 +96,7 @@ describe('TokenTimeLock', function () {
             daysToSeconds(5),
           ],
           [20, 20, 20, 20, 10],
-          await latestBlockTimestamp()
+          await EthUtils.latestBlockTimestamp()
         )
       ).to.revertedWith('TokenTimeLock: unlock percent not match 100');
     });
@@ -115,7 +115,7 @@ describe('TokenTimeLock', function () {
           daysToSeconds(5),
         ],
         [20, 20, 20, 20, 20],
-        await latestBlockTimestamp()
+        await EthUtils.latestBlockTimestamp()
       );
 
       await expect(
@@ -132,7 +132,7 @@ describe('TokenTimeLock', function () {
             daysToSeconds(5),
           ],
           [20, 20, 20, 20, 20],
-          await latestBlockTimestamp()
+          await EthUtils.latestBlockTimestamp()
         )
       ).to.reverted;
     });
@@ -151,7 +151,7 @@ describe('TokenTimeLock', function () {
           daysToSeconds(5),
         ],
         [20, 20, 20, 20, 20],
-        await latestBlockTimestamp()
+        await EthUtils.latestBlockTimestamp()
       );
 
       expect(await lockContract.owner()).to.equal(addr1.address);
@@ -175,7 +175,7 @@ describe('TokenTimeLock', function () {
           daysToSeconds(5),
         ],
         [20, 20, 10, 25, 25],
-        await latestBlockTimestamp()
+        await EthUtils.latestBlockTimestamp()
       );
       await coinContract.transfer(
         lockContract.address,
@@ -227,14 +227,14 @@ describe('TokenTimeLock', function () {
           daysToSeconds(5),
         ],
         [20, 20, 10, 25, 25],
-        await latestBlockTimestamp()
+        await EthUtils.latestBlockTimestamp()
       );
 
       await coinContract.transfer(lockContract.address, 100);
 
       const releaseDates = [
-        (await latestBlockTimestamp()) + daysToSeconds(1),
-        (await latestBlockTimestamp()) + daysToSeconds(5),
+        (await EthUtils.latestBlockTimestamp()) + daysToSeconds(1),
+        (await EthUtils.latestBlockTimestamp()) + daysToSeconds(5),
       ];
 
       // Move to 1st phase
@@ -264,7 +264,7 @@ describe('TokenTimeLock', function () {
           daysToSeconds(5),
         ],
         [20, 20, 10, 25, 25],
-        await latestBlockTimestamp()
+        await EthUtils.latestBlockTimestamp()
       );
 
       await coinContract.transfer(lockContract.address, 100);
@@ -289,12 +289,12 @@ describe('TokenTimeLock', function () {
           daysToSeconds(5),
         ],
         [20, 20, 10, 25, 25],
-        await latestBlockTimestamp()
+        await EthUtils.latestBlockTimestamp()
       );
 
       await coinContract.transfer(lockContract.address, 100);
 
-      const originDate = await latestBlockTimestamp();
+      const originDate = await EthUtils.latestBlockTimestamp();
       const expectedReleaseDates = [
         originDate + daysToSeconds(1),
         originDate + daysToSeconds(5),
@@ -336,7 +336,7 @@ describe('TokenTimeLock', function () {
           daysToSeconds(5),
         ],
         [20, 20, 10, 25, 25],
-        await latestBlockTimestamp()
+        await EthUtils.latestBlockTimestamp()
       );
 
       await coinContract.transfer(lockContract.address, 100);
@@ -378,7 +378,7 @@ describe('TokenTimeLock', function () {
           daysToSeconds(5),
         ],
         [20, 20, 10, 25, 25],
-        await latestBlockTimestamp()
+        await EthUtils.latestBlockTimestamp()
       );
       await coinContract.transfer(lockContract.address, 100);
 
@@ -405,7 +405,7 @@ describe('TokenTimeLock', function () {
           daysToSeconds(5),
         ],
         [20, 20, 10, 25, 25],
-        await latestBlockTimestamp()
+        await EthUtils.latestBlockTimestamp()
       );
       await coinContract.transfer(lockContract.address, 50);
       // Release all phases
@@ -423,7 +423,7 @@ describe('TokenTimeLock', function () {
         100,
         [daysToSeconds(1)],
         [100],
-        await latestBlockTimestamp()
+        await EthUtils.latestBlockTimestamp()
       );
 
       const lockAmount = 100;
