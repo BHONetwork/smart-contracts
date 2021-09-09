@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import "./CoinBHOV2.sol";
+import "./CoinBHO.sol";
 
 contract StakingBHOPool is
     Initializable,
@@ -29,7 +29,7 @@ contract StakingBHOPool is
     mapping(uint64 => ProgramInfo) private _programInfos;
     uint64 private _nextProgramId;
     address private _feeCollector;
-    CoinBHOV2 private _token;
+    CoinBHO private _token;
 
     event RegisterProgram(address indexed who, uint64 indexed programId);
     event EnterStaking(
@@ -71,6 +71,8 @@ contract StakingBHOPool is
     bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE");
     bytes32 public constant PROGRAM_AUTHOR_ROLE =
         keccak256("PROGRAM_AUTHOR_ROLE");
+    bytes32 public constant REMAINDER_COLLECT_ROLE =
+        keccak256("REMAINDER_COLLECT_ROLE");
 
     function nextStakingId(address staker) public view returns (uint64) {
         return _nextStakingIds[staker];
@@ -115,9 +117,10 @@ contract StakingBHOPool is
         AccessControlUpgradeable._setupRole(DEFAULT_ADMIN_ROLE, admin);
         AccessControlUpgradeable._setupRole(EMERGENCY_ROLE, admin);
         AccessControlUpgradeable._setupRole(PROGRAM_AUTHOR_ROLE, admin);
+        AccessControlUpgradeable._setupRole(REMAINDER_COLLECT_ROLE, admin);
 
         _feeCollector = feeCollector;
-        _token = CoinBHOV2(token);
+        _token = CoinBHO(token);
 
         // Two default staking programs
         uint256[] memory interestDates1 = new uint256[](1);
@@ -273,7 +276,6 @@ contract StakingBHOPool is
             _programInfo.apy
         );
 
-        _token.mint(address(this), reward + reward / 10);
         _token.transfer(_feeCollector, reward / 10);
         _token.transfer(_msgSender(), _stakingInfo.amount + reward);
         _stakingInfo.isWithdrawn = true;
@@ -317,6 +319,22 @@ contract StakingBHOPool is
             _stakingInfo.amount,
             stakingId
         );
+        return true;
+    }
+
+    /**
+     * @dev Withdraw remaining tokens to sender.
+     * This is used when staking programs are all over, and devs want to withdraw remaining tokens.
+     * Only sender with REMAINDER_COLLECT_ROLE can proceed.
+     */
+    function withdrawRemainingTokens() public returns (bool) {
+        require(
+            hasRole(REMAINDER_COLLECT_ROLE, _msgSender()),
+            "Staking: remainder collect role required"
+        );
+
+        _token.transfer(_msgSender(), _token.balanceOf(address(this)));
+
         return true;
     }
 }

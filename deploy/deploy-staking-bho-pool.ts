@@ -21,13 +21,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       },
     },
   });
-
-  const coinContract = await ethers.getContract('CoinBHO', deployer);
-  const MINTER_ROLE = await coinContract.MINTER_ROLE();
-  await coinContract.grantRole(MINTER_ROLE, stakingDeployment.address);
 };
 
 func.tags = ['staking-bho-pool', 'main-suite'];
-func.dependencies = ['coin-bho-v2'];
+func.dependencies = ['coin-bho'];
 
 export default func;

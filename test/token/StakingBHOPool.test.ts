@@ -5,6 +5,13 @@ import { ethers, deployments, getNamedAccounts } from 'hardhat';
 import { EthUtils } from '../../utils';
 import { BigNumber } from '@ethersproject/bignumber';
 
+const ALICE_INITIAL_BALANCE = EthUtils.expandDecimals(100_000, 18);
+const STAKING_CONTRACT_INITIAL_BALANCE = EthUtils.expandDecimals(200_000, 18);
+const DEPLOYER_INITIAL_BALANCE = EthUtils.expandDecimals(
+  10_000_000_000,
+  18
+).sub(ALICE_INITIAL_BALANCE.add(STAKING_CONTRACT_INITIAL_BALANCE));
+
 async function ensureEnterStaking(
   user: string,
   amount: BigNumber,
@@ -16,14 +23,23 @@ async function ensureEnterStaking(
 
   await coinContract.approve(poolContract.address, amount);
 
+  const userBalanceBeforeStaking = (await coinContract.balanceOf(
+    user
+  )) as BigNumber;
+  const stakingContractBalanceBeforeStaking = (await coinContract.balanceOf(
+    poolContract.address
+  )) as BigNumber;
+
   await expect(poolContract.enterStaking(programId, amount))
     .to.emit(poolContract, 'EnterStaking')
     .withArgs(user, amount, expectedStakingId);
 
   expect(await coinContract.balanceOf(user)).to.eq(
-    EthUtils.expandDecimals(0, 18)
+    userBalanceBeforeStaking.sub(amount)
   );
-  expect(await coinContract.balanceOf(poolContract.address)).to.eq(amount);
+  expect(await coinContract.balanceOf(poolContract.address)).to.eq(
+    stakingContractBalanceBeforeStaking.add(amount)
+  );
 
   const stakingInfo = await poolContract.stakingInfo(user, expectedStakingId);
   expect(stakingInfo.isWithdrawn).to.eq(false);
@@ -32,45 +48,114 @@ async function ensureEnterStaking(
 
 async function ensureLeaveStaking(
   user: string,
-  amount: BigNumber,
   stakingId: number,
   expectedReward: BigNumber
 ) {
   const poolContract = await ethers.getContract('StakingBHOPool', user);
   const coinContract = await ethers.getContract('CoinBHO', user);
+
+  const staking_info_before_leaving_staking = await poolContract.stakingInfo(
+    user,
+    stakingId
+  );
+
+  const userBalanceBeforeLeavingStaking = (await coinContract.balanceOf(
+    user
+  )) as BigNumber;
+  const stakingContractBalanceBeforeLeavingStaking =
+    (await coinContract.balanceOf(poolContract.address)) as BigNumber;
+
   await expect(poolContract.leaveStaking(stakingId))
     .to.emit(poolContract, 'LeaveStaking')
-    .withArgs(user, expectedReward, amount.add(expectedReward), stakingId);
+    .withArgs(
+      user,
+      expectedReward,
+      staking_info_before_leaving_staking.amount.add(expectedReward),
+      stakingId
+    );
 
   expect(await coinContract.balanceOf(user)).to.equal(
-    amount.add(expectedReward)
+    userBalanceBeforeLeavingStaking
+      .add(staking_info_before_leaving_staking.amount)
+      .add(expectedReward)
   );
   expect(await coinContract.balanceOf(poolContract.address)).to.equal(
-    BigNumber.from(0)
+    stakingContractBalanceBeforeLeavingStaking.sub(
+      staking_info_before_leaving_staking.amount
+        .add(expectedReward)
+        .add(expectedReward.div(10))
+    )
   );
 
-  const stakingInfo = await poolContract.stakingInfo(user, stakingId);
-  expect(stakingInfo.isWithdrawn).to.eq(true);
-  expect(stakingInfo.isExist).to.eq(true);
+  const staking_info_after_leaving_staking = await poolContract.stakingInfo(
+    user,
+    stakingId
+  );
+  expect(staking_info_after_leaving_staking.isWithdrawn).to.eq(true);
+  expect(staking_info_after_leaving_staking.isExist).to.eq(true);
 }
 
 async function ensureEmergencyWithdraw(
   admin: string,
   user: string,
-  amount: BigNumber,
   stakingId: number
 ) {
   const poolContract = await ethers.getContract('StakingBHOPool', admin);
   const coinContract = await ethers.getContract('CoinBHO', admin);
+
+  const user_balance_before_emergency_withdraw = (await coinContract.balanceOf(
+    user
+  )) as BigNumber;
+  const staking_contract_balance_before_emergency_withdraw =
+    (await coinContract.balanceOf(poolContract.address)) as BigNumber;
+  const staking_info_before_emergency_withdraw = await poolContract.stakingInfo(
+    user,
+    stakingId
+  );
+
   await expect(poolContract.emergencyWithdraw(user, 0))
     .to.emit(poolContract, 'EmergencyWithdraw')
-    .withArgs(admin, user, amount, stakingId);
-  expect(await coinContract.balanceOf(user)).to.eq(amount);
-  expect(await coinContract.balanceOf(poolContract.address)).to.eq(0);
+    .withArgs(
+      admin,
+      user,
+      staking_info_before_emergency_withdraw.amount,
+      stakingId
+    );
 
-  const stakingInfo = await poolContract.stakingInfo(user, stakingId);
-  expect(stakingInfo.isWithdrawn).to.eq(true);
-  expect(stakingInfo.isExist).to.eq(true);
+  expect(await coinContract.balanceOf(user)).to.eq(
+    user_balance_before_emergency_withdraw.add(
+      staking_info_before_emergency_withdraw.amount
+    )
+  );
+  expect(await coinContract.balanceOf(poolContract.address)).to.eq(
+    staking_contract_balance_before_emergency_withdraw.sub(
+      staking_info_before_emergency_withdraw.amount
+    )
+  );
+
+  const staking_info_after_emergency_withdraw = await poolContract.stakingInfo(
+    user,
+    stakingId
+  );
+  expect(staking_info_after_emergency_withdraw.isWithdrawn).to.eq(true);
+  expect(staking_info_after_emergency_withdraw.isExist).to.eq(true);
+}
+
+async function ensureWithdrawRemainingTokens(admin: string) {
+  const poolContract = await ethers.getContract('StakingBHOPool', admin);
+  const coinContract = await ethers.getContract('CoinBHO');
+
+  const staking_contract_balance_before_withdraw = await coinContract.balanceOf(
+    poolContract.address
+  );
+  const admin_balance_before_withdraw = await coinContract.balanceOf(admin);
+
+  await poolContract.withdrawRemainingTokens();
+
+  expect(await coinContract.balanceOf(poolContract.address)).to.eq(0);
+  expect(await coinContract.balanceOf(admin)).to.eq(
+    admin_balance_before_withdraw.add(staking_contract_balance_before_withdraw)
+  );
 }
 
 describe('StakingBHOPool', function () {
@@ -78,19 +163,25 @@ describe('StakingBHOPool', function () {
   let feeCollector: string;
   let defaultAdmin: string;
   let alice: string;
+  let bob: string;
 
   beforeEach(async () => {
-    await deployments.fixture(['staking-bho-pool', 'coin-bho-v2']);
-    ({ deployer, feeCollector, defaultAdmin, alice } =
+    await deployments.fixture(['staking-bho-pool', 'coin-bho']);
+    ({ deployer, feeCollector, defaultAdmin, alice, bob } =
       await getNamedAccounts());
     const poolContract = await ethers.getContract('StakingBHOPool');
     const coinContract = await ethers.getContract('CoinBHO', deployer);
 
     // Alice got 100k BHO
-    await coinContract.transfer(alice, EthUtils.expandDecimals(100_000, 18));
+    await coinContract.transfer(alice, ALICE_INITIAL_BALANCE);
+
+    await coinContract.transfer(
+      poolContract.address,
+      STAKING_CONTRACT_INITIAL_BALANCE
+    );
 
     // Set blocktimestamp to 25/09/2021 1AM
-    await EthUtils.setNextBlockTimestamp(1632531600);
+    await EthUtils.setBlockTimestamp(1632531600);
   });
 
   describe('Register program', function () {
@@ -210,7 +301,6 @@ describe('StakingBHOPool', function () {
       await EthUtils.setNextBlockTimestamp(1633100400);
       await ensureLeaveStaking(
         alice,
-        stakingAmount,
         0,
         stakingAmount.mul(3000).div(BigNumber.from(10_000).mul(365))
       );
@@ -223,11 +313,11 @@ describe('StakingBHOPool', function () {
       // Leave staking at 01/10/2021 1h
       // So reward should be 5 days from 25/09/2021 1h with apy 30
       await EthUtils.setNextBlockTimestamp(1633050000);
-      const reward = stakingAmount
+      const expectedReward = stakingAmount
         .mul(3000)
         .mul(5)
         .div(BigNumber.from(10_000).mul(365));
-      await ensureLeaveStaking(alice, stakingAmount, 0, reward);
+      await ensureLeaveStaking(alice, 0, expectedReward);
     });
 
     it('should revert when attempt to withdraw already withdrawn staking', async function () {
@@ -240,7 +330,6 @@ describe('StakingBHOPool', function () {
       await EthUtils.setNextBlockTimestamp(1633050000);
       await ensureLeaveStaking(
         alice,
-        stakingAmount,
         0,
         stakingAmount.mul(3000).mul(5).div(BigNumber.from(10_000).mul(365))
       );
@@ -282,7 +371,6 @@ describe('StakingBHOPool', function () {
       await EthUtils.setNextBlockTimestamp(1633050000);
       await ensureLeaveStaking(
         alice,
-        stakingAmount,
         0,
         stakingAmount.mul(3000).mul(5).div(BigNumber.from(10_000).mul(365))
       );
@@ -295,11 +383,33 @@ describe('StakingBHOPool', function () {
     it('should work if given inputs are valid', async function () {
       const stakingAmount = EthUtils.expandDecimals(100_000, 18);
       await ensureEnterStaking(alice, stakingAmount, 1, 0);
-      const poolContract = await ethers.getContract(
-        'StakingBHOPool',
-        defaultAdmin
+      await ensureEmergencyWithdraw(defaultAdmin, alice, 0);
+    });
+  });
+
+  describe('Withdraw remaining tokens', async function () {
+    it('should revert if sender is not authorized', async function () {
+      const poolContract = await ethers.getContract('StakingBHOPool', alice);
+
+      await expect(poolContract.withdrawRemainingTokens()).to.revertedWith(
+        'Staking: remainder collect role required'
       );
-      await ensureEmergencyWithdraw(defaultAdmin, alice, stakingAmount, 0);
+    });
+
+    it('should work if sender is authorized', async function () {
+      const stakingAmount = EthUtils.expandDecimals(100_000, 18);
+      await ensureEnterStaking(alice, stakingAmount, 1, 0);
+
+      // Leave staking at 01/10/2021 1h
+      // So reward should be 5 days from 25/09/2021 1h with apy 30
+      await EthUtils.setNextBlockTimestamp(1633050000);
+      const expectedReward = stakingAmount
+        .mul(3000)
+        .mul(5)
+        .div(BigNumber.from(10_000).mul(365));
+      await ensureLeaveStaking(alice, 0, expectedReward);
+
+      await ensureWithdrawRemainingTokens(defaultAdmin);
     });
   });
 });

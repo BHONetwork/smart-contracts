@@ -1,5 +1,6 @@
 import { BigNumber } from '@ethersproject/bignumber';
-import { ethers } from 'hardhat';
+// @ts-ignore
+import { ethers, timeAndMine } from 'hardhat';
 
 export function daysToSeconds(day: number): number {
   return day * 60 * 60 * 24;
@@ -12,6 +13,10 @@ export namespace EthUtils {
 
   export async function latestBlockTimestamp(): Promise<number> {
     return (await ethers.provider.getBlock('latest')).timestamp;
+  }
+
+  export async function setBlockTimestamp(date: number) {
+    await timeAndMine.setTime(date);
   }
 
   export async function setNextBlockTimestamp(date: number) {

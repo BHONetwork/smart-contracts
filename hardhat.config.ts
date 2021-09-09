@@ -6,6 +6,7 @@ import '@nomiclabs/hardhat-solhint';
 import 'hardhat-gas-reporter';
 import '@nomiclabs/hardhat-ethers';
 import 'hardhat-deploy';
+import '@atixlabs/hardhat-time-n-mine';
 
 dotenv.config();
 
@@ -59,18 +60,26 @@ const config: HardhatUserConfig = {
     apiKey: process.env.BSCSCAN_API_KEY,
   },
   namedAccounts: {
-    deployer: 0,
+    deployer: {
+      default: 0,
+      localhost: process.env.BSC_TESTNET_DEPLOYER_PRIVATE_KEY as string,
+      'bsc-testnet': process.env.BSC_TESTNET_DEPLOYER_PRIVATE_KEY as string,
+      'bsc-mainnet': process.env.BSC_MAINNET_DEPLOYER_PRIVATE_KEY as string,
+    },
     feeCollector: {
       default: 1,
+      localhost: process.env.BSC_TESTNET_FEE_COLLECTOR_ADDRESS as string,
       'bsc-testnet': process.env.BSC_TESTNET_FEE_COLLECTOR_ADDRESS as string,
       'bsc-mainnet': process.env.BSC_MAINNET_FEE_COLLECTOR_ADDRESS as string,
     },
     defaultAdmin: {
       default: 2,
+      localhost: process.env.BSC_TESTNET_DEFAULT_ADMIN_ADDRESS as string,
       'bsc-testnet': process.env.BSC_TESTNET_DEFAULT_ADMIN_ADDRESS as string,
       'bsc-mainnet': process.env.BSC_MAINNET_DEFAULT_ADMIN_ADDRESS as string,
     },
     alice: 3,
+    bob: 4,
   },
 };
 
