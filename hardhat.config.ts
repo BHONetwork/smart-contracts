@@ -62,9 +62,6 @@ const config: HardhatUserConfig = {
   namedAccounts: {
     deployer: {
       default: 0,
-      localhost: process.env.BSC_TESTNET_DEPLOYER_PRIVATE_KEY as string,
-      'bsc-testnet': process.env.BSC_TESTNET_DEPLOYER_PRIVATE_KEY as string,
-      'bsc-mainnet': process.env.BSC_MAINNET_DEPLOYER_PRIVATE_KEY as string,
     },
     feeCollector: {
       default: 1,
