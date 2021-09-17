@@ -65,13 +65,11 @@ const config: HardhatUserConfig = {
     },
     feeCollector: {
       default: 1,
-      localhost: process.env.BSC_TESTNET_FEE_COLLECTOR_ADDRESS as string,
       'bsc-testnet': process.env.BSC_TESTNET_FEE_COLLECTOR_ADDRESS as string,
       'bsc-mainnet': process.env.BSC_MAINNET_FEE_COLLECTOR_ADDRESS as string,
     },
     defaultAdmin: {
       default: 2,
-      localhost: process.env.BSC_TESTNET_DEFAULT_ADMIN_ADDRESS as string,
       'bsc-testnet': process.env.BSC_TESTNET_DEFAULT_ADMIN_ADDRESS as string,
       'bsc-mainnet': process.env.BSC_MAINNET_DEFAULT_ADMIN_ADDRESS as string,
     },
