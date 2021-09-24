@@ -6,18 +6,12 @@ import "./BEP20/IBEP20.sol";
 import "./BEP20/SafeBEP20.sol";
 import "../math/SafeMathX.sol";
 
-contract TokenTimeLock is OwnableUpgradeable {
+contract TokenTimeLockByAmount is OwnableUpgradeable {
     using SafeBEP20 for IBEP20;
     using SafeMathX for uint256;
 
-    /// Release date that user initiates a release of each phase
-    uint64[] private _releaseDates;
-
-    /// Lock duration (in seconds) of each phase
-    uint32[] private _lockDurations;
-
-    /// Release percent of each phase
-    uint32[] private _releasePercents;
+    /// Release amounts of each phase
+    uint256[] private _releaseAmounts;
 
     /// Total locked tokens
     uint256 private _amount;
@@ -28,14 +22,20 @@ contract TokenTimeLock is OwnableUpgradeable {
     /// Beneficiary
     address private _user;
 
+    /// Token address
+    address private _token;
+
+    /// Release date that user initiates a release of each phase
+    uint64[] private _releaseDates;
+
     /// Start date of the lock
     uint64 private _startDate;
 
+    /// Lock duration (in seconds) of each phase
+    uint32[] private _lockDurations;
+
     /// Next release phase
     uint32 private _nextReleaseIdx;
-
-    /// Token address
-    address private _token;
 
     event Released(
         uint256 phaseReleasedAmount,
@@ -71,8 +71,8 @@ contract TokenTimeLock is OwnableUpgradeable {
         return _lockDurations;
     }
 
-    function releasePercents() public view returns (uint32[] memory) {
-        return _releasePercents;
+    function releaseAmounts() public view returns (uint256[] memory) {
+        return _releaseAmounts;
     }
 
     function releaseDates() public view returns (uint64[] memory) {
@@ -93,7 +93,7 @@ contract TokenTimeLock is OwnableUpgradeable {
             uint256 releasedAmount_,
             uint64 startDate_,
             uint32[] memory lockDurations_,
-            uint32[] memory releasePercents_,
+            uint256[] memory releaseAmounts_,
             uint64[] memory releaseDates_,
             uint32 nextReleaseIdx_
         )
@@ -105,7 +105,7 @@ contract TokenTimeLock is OwnableUpgradeable {
             releasedAmount(),
             startDate(),
             lockDurations(),
-            releasePercents(),
+            releaseAmounts(),
             releaseDates(),
             nextReleaseIdx()
         );
@@ -114,37 +114,33 @@ contract TokenTimeLock is OwnableUpgradeable {
     /// @notice Register a new lock for a user
     /// Reverts in the following cases:
     /// - Duplicated lock id for a user.
-    /// - `lockDurations` and `unlockPercents` length don't match.
-    /// - `unlockPercents` sum is not equal to 100 (100%).
+    /// - `lockDurations` and `releaseAmounts` length don't match.
     function initialize(
         address owner_,
         address user_,
         address token_,
-        uint256 amount_,
         uint32[] calldata lockDurations_,
-        uint32[] calldata releasePercents_,
+        uint256[] calldata releaseAmounts_,
         uint64 startDate_
     ) public initializer returns (bool) {
         __Ownable_init();
 
         require(
-            lockDurations_.length == releasePercents_.length,
-            "TokenTimeLock: unlock length not match"
+            lockDurations_.length == releaseAmounts_.length,
+            "TokenTimeLockByAmount: unlock length not match"
         );
 
-        uint256 _sum;
-        for (uint256 i = 0; i < releasePercents_.length; ++i) {
-            _sum += releasePercents_[i];
+        uint256 _sum = 0;
+        for (uint256 i = 0; i < releaseAmounts_.length; ++i) {
+            _sum += releaseAmounts_[i];
         }
-
-        require(_sum == 100, "TokenTimeLock: unlock percent not match 100");
 
         _user = user_;
         _token = token_;
         _startDate = startDate_;
         _lockDurations = lockDurations_;
-        _releasePercents = releasePercents_;
-        _amount = amount_;
+        _releaseAmounts = releaseAmounts_;
+        _amount = _sum;
         _releasedAmount = 0;
         _nextReleaseIdx = 0;
         _releaseDates = new uint64[](_lockDurations.length);
@@ -168,12 +164,12 @@ contract TokenTimeLock is OwnableUpgradeable {
 
         require(
             _nextReleaseIdx < numOfPhases,
-            "TokenTimeLock: all phases are released"
+            "TokenTimeLockByAmount: all phases are released"
         );
         require(
             block.timestamp >=
                 _startDate + _lockDurations[_nextReleaseIdx] * 1 seconds,
-            "TokenTimeLock: next phase unavailable"
+            "TokenTimeLockByAmount: next phase unavailable"
         );
 
         uint256 prevReleaseIdx = _nextReleaseIdx;
@@ -185,17 +181,7 @@ contract TokenTimeLock is OwnableUpgradeable {
             _startDate + _lockDurations[_nextReleaseIdx] * 1 seconds
         ) {
             uint256 stepReleaseAmount = 0;
-            if (_nextReleaseIdx == numOfPhases - 1) {
-                stepReleaseAmount =
-                    _amount -
-                    _releasedAmount -
-                    availableReleaseAmount;
-            } else {
-                stepReleaseAmount = _amount.mulScale(
-                    _releasePercents[_nextReleaseIdx],
-                    100
-                );
-            }
+            stepReleaseAmount = _releaseAmounts[_nextReleaseIdx];
 
             availableReleaseAmount += stepReleaseAmount;
             _nextReleaseIdx++;
@@ -204,7 +190,7 @@ contract TokenTimeLock is OwnableUpgradeable {
         uint256 balance = token().balanceOf(address(this));
         require(
             balance >= availableReleaseAmount,
-            "TokenTimeLock: insufficient balance"
+            "TokenTimeLockByAmount: insufficient balance"
         );
         _releasedAmount += availableReleaseAmount;
         token().safeTransfer(beneficiary(), availableReleaseAmount);
