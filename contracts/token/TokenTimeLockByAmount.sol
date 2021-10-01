@@ -135,11 +135,11 @@ contract TokenTimeLockByAmount is OwnableUpgradeable {
             _sum += releaseAmounts_[i];
         }
 
-        require(user_ != address(0), "TokenTimeLock: user address is zero");
+        require(user_ != address(0), "TokenTimeLockByAmount: user address is zero");
 
-        require(token_ != address(0), "TokenTimeLock: token address is zero");
+        require(token_ != address(0), "TokenTimeLockByAmount: token address is zero");
 
-        require(owner_ != address(0), "TokenTimeLock: owner address is zero");
+        require(owner_ != address(0), "TokenTimeLockByAmount: owner address is zero");
 
         _user = user_;
         _token = token_;
