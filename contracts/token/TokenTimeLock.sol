@@ -139,6 +139,14 @@ contract TokenTimeLock is OwnableUpgradeable {
 
         require(_sum == 100, "TokenTimeLock: unlock percent not match 100");
 
+        require(user_ != address(0), "TokenTimeLock: user address is zero");
+
+        require(token_ != address(0), "TokenTimeLock: token address is zero");
+
+        require(owner_ != address(0), "TokenTimeLock: owner address is zero");
+
+        require(amount_ > 0, "TokenTimeLock: amount must greater than zero");
+
         _user = user_;
         _token = token_;
         _startDate = startDate_;
@@ -178,13 +186,13 @@ contract TokenTimeLock is OwnableUpgradeable {
 
         uint256 prevReleaseIdx = _nextReleaseIdx;
 
-        uint256 availableReleaseAmount = 0;
+        uint256 availableReleaseAmount;
         while (
             _nextReleaseIdx < numOfPhases &&
             block.timestamp >=
             _startDate + _lockDurations[_nextReleaseIdx] * 1 seconds
         ) {
-            uint256 stepReleaseAmount = 0;
+            uint256 stepReleaseAmount;
             if (_nextReleaseIdx == numOfPhases - 1) {
                 stepReleaseAmount =
                     _amount -
