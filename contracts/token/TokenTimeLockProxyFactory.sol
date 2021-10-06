@@ -5,15 +5,10 @@ pragma solidity 0.8.4;
 import "@openzeppelin/contracts/proxy/Clones.sol";
 import "./TokenTimeLock.sol";
 
-contract TokenTimeLockProxyFactory{
-    event ProxyCreated(
-        address proxy,
-        address implementation,
-        address proxyOwner
-    );
+contract TokenTimeLockProxyFactory {
+    event ProxyCreated(address proxy, address implementation, address factory);
 
     function createProxy(
-        address owner_,
         address lock,
         address user_,
         address token_,
@@ -24,7 +19,7 @@ contract TokenTimeLockProxyFactory{
     ) public returns (address) {
         address proxy = Clones.clone(lock);
         bool setupResult = TokenTimeLock(proxy).initialize(
-            owner_,
+            address(this),
             user_,
             token_,
             amount_,
@@ -34,7 +29,7 @@ contract TokenTimeLockProxyFactory{
         );
         require(setupResult, "TokenTimeLockProxy: can't setup");
 
-        emit ProxyCreated(proxy, lock, owner_);
+        emit ProxyCreated(proxy, lock, address(this));
 
         return proxy;
     }

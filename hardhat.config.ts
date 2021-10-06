@@ -43,7 +43,7 @@ const config: HardhatUserConfig = {
       live: false,
     },
     'bsc-testnet': {
-      url: 'https://data-seed-prebsc-1-s1.binance.org:8545',
+      url: 'https://data-seed-prebsc-1-s2.binance.org:8545',
       accounts: [process.env.BSC_TESTNET_DEPLOYER_PRIVATE_KEY as string],
       live: true,
       tags: ['staging'],
@@ -55,9 +55,19 @@ const config: HardhatUserConfig = {
       live: true,
       chainId: 56,
     },
+    goerli: {
+      url: 'https://rpc.slock.it/goerli',
+      accounts: [process.env.BSC_TESTNET_DEPLOYER_PRIVATE_KEY as string],
+      chainId: 5,
+    },
+    rinkeby: {
+      url: 'https://rinkeby.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161',
+      accounts: [process.env.BSC_TESTNET_DEPLOYER_PRIVATE_KEY as string],
+      chainId: 4,
+    },
   },
   etherscan: {
-    apiKey: process.env.BSCSCAN_API_KEY,
+    // apiKey: process.env.BSCSCAN_API_KEY,
   },
   namedAccounts: {
     deployer: {

@@ -35,7 +35,6 @@ describe('TokenTimeLockProxyFactory', async function () {
     it('should revert if implementation address do not have initialize()', async function () {
       await expect(
         lockProxyFactoryContract.createProxy(
-          owner.address,
           ethers.constants.AddressZero,
           owner.address,
           coinContract.address,
@@ -50,7 +49,6 @@ describe('TokenTimeLockProxyFactory', async function () {
     it('should revert if supplied parameters are invalid lock settings', async function () {
       await expect(
         lockProxyFactoryContract.createProxy(
-          owner.address,
           lockContract.address,
           owner.address,
           coinContract.address,
@@ -65,7 +63,6 @@ describe('TokenTimeLockProxyFactory', async function () {
     it('should emit event ProxyCreated with correct parameters', async function () {
       await expect(
         lockProxyFactoryContract.createProxy(
-          owner.address,
           lockContract.address,
           owner.address,
           coinContract.address,
@@ -77,10 +74,9 @@ describe('TokenTimeLockProxyFactory', async function () {
       ).to.emit(lockProxyFactoryContract, 'ProxyCreated');
     });
 
-    it('should owner of proxy is correct', async function () {
+    it('should factory of proxy is correct', async function () {
       const proxyAddr = await getProxyAddr(
         lockProxyFactoryContract,
-        owner.address,
         lockContract.address,
         owner.address,
         coinContract.address,
@@ -91,7 +87,9 @@ describe('TokenTimeLockProxyFactory', async function () {
       );
       const proxyContract = lockContract.attach(proxyAddr);
 
-      expect(await proxyContract.owner()).to.equal(owner.address);
+      expect(await proxyContract.factory()).to.equal(
+        lockProxyFactoryContract.address
+      );
     });
   });
 
@@ -99,7 +97,6 @@ describe('TokenTimeLockProxyFactory', async function () {
     it('should return correct lock state', async function () {
       const proxyAddr = await getProxyAddr(
         lockProxyFactoryContract,
-        owner.address,
         lockContract.address,
         owner.address,
         coinContract.address,
@@ -118,7 +115,8 @@ describe('TokenTimeLockProxyFactory', async function () {
         0,
         [60, 120],
         [50, 50],
-        0
+        0,
+        lockProxyFactoryContract.address
       );
     });
 
@@ -126,7 +124,6 @@ describe('TokenTimeLockProxyFactory', async function () {
       // First proxy
       const proxyAddr1 = await getProxyAddr(
         lockProxyFactoryContract,
-        owner.address,
         lockContract.address,
         owner.address,
         coinContract.address,
@@ -139,7 +136,6 @@ describe('TokenTimeLockProxyFactory', async function () {
       // Second proxy
       const proxyAddr2 = await getProxyAddr(
         lockProxyFactoryContract,
-        owner.address,
         lockContract.address,
         owner.address,
         coinContract.address,
@@ -161,7 +157,8 @@ describe('TokenTimeLockProxyFactory', async function () {
         0,
         [60, 120],
         [50, 50],
-        0
+        0,
+        lockProxyFactoryContract.address
       );
 
       // Second proxy assertion
@@ -173,7 +170,8 @@ describe('TokenTimeLockProxyFactory', async function () {
         0,
         [50, 100],
         [60, 40],
-        0
+        0,
+        lockProxyFactoryContract.address
       );
     });
   });
@@ -187,7 +185,8 @@ async function shouldLockStateCorrect(
   releaseAmount: number,
   lockDuration: number[],
   releasePercents: number[],
-  nextReleaseIdx: number
+  nextReleaseIdx: number,
+  factoryAddr: string
 ) {
   const [
     _user,
@@ -199,6 +198,7 @@ async function shouldLockStateCorrect(
     _releasePercents,
     _releaseDates,
     _nextReleaseIdx,
+    _factoryAddr,
   ] = await lockContract.functions.lockData();
 
   expect(_user).to.equal(userAddr);
@@ -208,11 +208,11 @@ async function shouldLockStateCorrect(
   expect(_lockDurations).deep.equal(lockDuration);
   expect(_releasePercents).deep.equal(releasePercents);
   expect(_nextReleaseIdx).to.equal(nextReleaseIdx);
+  expect(_factoryAddr).to.equal(factoryAddr);
 }
 
 async function getProxyAddr(
   factoryContract: Contract,
-  ownerAddr: string,
   lockContractAddr: string,
   userAddr: string,
   coinContractAddr: string,
@@ -222,7 +222,6 @@ async function getProxyAddr(
   startDate: number
 ): Promise<string> {
   const tx: ContractTransaction = await factoryContract.createProxy(
-    ownerAddr,
     lockContractAddr,
     userAddr,
     coinContractAddr,

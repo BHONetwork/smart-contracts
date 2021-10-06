@@ -6,14 +6,9 @@ import "@openzeppelin/contracts/proxy/Clones.sol";
 import "./TokenTimeLockByAmount.sol";
 
 contract TokenTimeLockByAmountProxyFactory {
-    event ProxyCreated(
-        address proxy,
-        address implementation,
-        address proxyOwner
-    );
+    event ProxyCreated(address proxy, address implementation, address factory);
 
     function createProxy(
-        address owner_,
         address lock,
         address user_,
         address token_,
@@ -23,7 +18,7 @@ contract TokenTimeLockByAmountProxyFactory {
     ) public returns (address) {
         address proxy = Clones.clone(lock);
         bool setupResult = TokenTimeLockByAmount(proxy).initialize(
-            owner_,
+            address(this),
             user_,
             token_,
             lockDurations_,
@@ -32,7 +27,7 @@ contract TokenTimeLockByAmountProxyFactory {
         );
         require(setupResult, "TokenTimeLockByAmountProxy: can't setup");
 
-        emit ProxyCreated(proxy, lock, owner_);
+        emit ProxyCreated(proxy, lock, address(this));
 
         return proxy;
     }

@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.4;
 
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "./BEP20/IBEP20.sol";
 import "./BEP20/SafeBEP20.sol";
 import "../math/SafeMathX.sol";
 
-contract TokenTimeLockByAmount is OwnableUpgradeable {
+contract TokenTimeLockByAmount is Initializable {
     using SafeBEP20 for IBEP20;
     using SafeMathX for uint256;
 
@@ -24,6 +24,9 @@ contract TokenTimeLockByAmount is OwnableUpgradeable {
 
     /// Token address
     address private _token;
+
+    /// Factory address
+    address private _factory;
 
     /// Release date that user initiates a release of each phase
     uint64[] private _releaseDates;
@@ -44,8 +47,6 @@ contract TokenTimeLockByAmount is OwnableUpgradeable {
         uint32 toIdx,
         uint64 date
     );
-
-    event SafetyReleaseActivated(uint256 amount, address to, uint64 date);
 
     function token() public view returns (IBEP20) {
         return IBEP20(_token);
@@ -83,6 +84,10 @@ contract TokenTimeLockByAmount is OwnableUpgradeable {
         return _nextReleaseIdx;
     }
 
+    function factory() public view returns (address) {
+        return _factory;
+    }
+
     function lockData()
         public
         view
@@ -95,7 +100,8 @@ contract TokenTimeLockByAmount is OwnableUpgradeable {
             uint32[] memory lockDurations_,
             uint256[] memory releaseAmounts_,
             uint64[] memory releaseDates_,
-            uint32 nextReleaseIdx_
+            uint32 nextReleaseIdx_,
+            address factory_
         )
     {
         return (
@@ -107,7 +113,8 @@ contract TokenTimeLockByAmount is OwnableUpgradeable {
             lockDurations(),
             releaseAmounts(),
             releaseDates(),
-            nextReleaseIdx()
+            nextReleaseIdx(),
+            factory()
         );
     }
 
@@ -116,15 +123,13 @@ contract TokenTimeLockByAmount is OwnableUpgradeable {
     /// - Duplicated lock id for a user.
     /// - `lockDurations` and `releaseAmounts` length don't match.
     function initialize(
-        address owner_,
+        address factory_,
         address user_,
         address token_,
         uint32[] calldata lockDurations_,
         uint256[] calldata releaseAmounts_,
         uint64 startDate_
     ) public initializer returns (bool) {
-        __Ownable_init();
-
         require(
             lockDurations_.length == releaseAmounts_.length,
             "TokenTimeLockByAmount: unlock length not match"
@@ -135,12 +140,22 @@ contract TokenTimeLockByAmount is OwnableUpgradeable {
             _sum += releaseAmounts_[i];
         }
 
-        require(user_ != address(0), "TokenTimeLockByAmount: user address is zero");
+        require(
+            user_ != address(0),
+            "TokenTimeLockByAmount: user address is zero"
+        );
 
-        require(token_ != address(0), "TokenTimeLockByAmount: token address is zero");
+        require(
+            token_ != address(0),
+            "TokenTimeLockByAmount: token address is zero"
+        );
 
-        require(owner_ != address(0), "TokenTimeLockByAmount: owner address is zero");
+        require(
+            factory_ != address(0),
+            "TokenTimeLockByAmount: factory address is zero"
+        );
 
+        _factory = factory_;
         _user = user_;
         _token = token_;
         _startDate = startDate_;
@@ -150,8 +165,6 @@ contract TokenTimeLockByAmount is OwnableUpgradeable {
         _releasedAmount = 0;
         _nextReleaseIdx = 0;
         _releaseDates = new uint64[](_lockDurations.length);
-
-        transferOwnership(owner_);
 
         return true;
     }
@@ -215,16 +228,6 @@ contract TokenTimeLockByAmount is OwnableUpgradeable {
             releaseDate
         );
 
-        return true;
-    }
-
-    /// @dev This is for safety.
-    /// For example, when someone setup the contract with wrong data and accidentally transfer token to the lockup contract.
-    /// The owner can get the token back by calling this function
-    function safetyRelease() public onlyOwner returns (bool) {
-        uint256 balance = token().balanceOf(address(this));
-        token().safeTransfer(owner(), balance);
-        emit SafetyReleaseActivated(balance, owner(), uint64(block.timestamp));
         return true;
     }
 }

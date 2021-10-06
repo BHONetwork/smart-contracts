@@ -9,10 +9,11 @@ describe('TokenTimeLock', function () {
   let lockContract: Contract;
   let owner: SignerWithAddress;
   let addr1: SignerWithAddress;
+  let factoryAddr: SignerWithAddress;
 
   beforeEach(async function () {
     await deployments.fixture(['token-time-lock', 'coin-bho']);
-    [owner, addr1] = await ethers.getSigners();
+    [owner, addr1, factoryAddr] = await ethers.getSigners();
     coinContract = await ethers.getContract('CoinBHO');
     lockContract = await ethers.getContract('TokenTimeLock');
     await coinContract.deployed();
@@ -22,7 +23,7 @@ describe('TokenTimeLock', function () {
   describe('register new lock', function () {
     it('new lock should be stored successfully', async function () {
       await lockContract.initialize(
-        owner.address,
+        factoryAddr.address,
         addr1.address,
         coinContract.address,
         10,
@@ -46,6 +47,7 @@ describe('TokenTimeLock', function () {
         releasePercents,
         releaseDates,
         nextReleaseIdx,
+        factory,
       ] = await lockContract.lockData();
 
       expect(amount).to.equal(10);
@@ -59,12 +61,13 @@ describe('TokenTimeLock', function () {
       expect(releasePercents).to.deep.equal([20, 20, 20, 20, 20]);
       expect(nextReleaseIdx).to.equal(0);
       expect(releasedAmount).to.equal(0);
+      expect(factory).to.equal(factoryAddr.address);
     });
 
     it('should revert when unlock percents and unlock dates length not match', async function () {
       await expect(
         lockContract.initialize(
-          owner.address,
+          factoryAddr.address,
           addr1.address,
           coinContract.address,
           10,
@@ -84,7 +87,7 @@ describe('TokenTimeLock', function () {
     it('should revert when total unlock percents not 100', async function () {
       await expect(
         lockContract.initialize(
-          owner.address,
+          factoryAddr.address,
           addr1.address,
           coinContract.address,
           10,
@@ -103,7 +106,7 @@ describe('TokenTimeLock', function () {
 
     it('should revert when call initialize() more than once', async function () {
       await lockContract.initialize(
-        owner.address,
+        factoryAddr.address,
         addr1.address,
         coinContract.address,
         10,
@@ -120,7 +123,7 @@ describe('TokenTimeLock', function () {
 
       await expect(
         lockContract.initialize(
-          owner.address,
+          factoryAddr.address,
           addr1.address,
           coinContract.address,
           10,
@@ -137,9 +140,9 @@ describe('TokenTimeLock', function () {
       ).to.reverted;
     });
 
-    it('should set owner correctly when initialize()', async function () {
+    it('should set factory correctly when initialize()', async function () {
       await lockContract.initialize(
-        addr1.address,
+        factoryAddr.address,
         addr1.address,
         coinContract.address,
         10,
@@ -154,14 +157,14 @@ describe('TokenTimeLock', function () {
         await EthUtils.latestBlockTimestamp()
       );
 
-      expect(await lockContract.owner()).to.equal(addr1.address);
+      expect(await lockContract.factory()).to.equal(factoryAddr.address);
     });
   });
 
   describe('release locked tokens', function () {
     it('should release locked tokens to correct user when unlock conditions are met', async function () {
       await lockContract.initialize(
-        owner.address,
+        factoryAddr.address,
         addr1.address,
         coinContract.address,
         BigNumber.from(100_000_000).mul(
@@ -215,7 +218,7 @@ describe('TokenTimeLock', function () {
 
     it('should emit Release event with correct data', async function () {
       await lockContract.initialize(
-        owner.address,
+        factoryAddr.address,
         addr1.address,
         coinContract.address,
         100,
@@ -252,7 +255,7 @@ describe('TokenTimeLock', function () {
 
     it('just to check what maximum gas that release all phases at a time', async function () {
       await lockContract.initialize(
-        owner.address,
+        factoryAddr.address,
         addr1.address,
         coinContract.address,
         100,
@@ -277,7 +280,7 @@ describe('TokenTimeLock', function () {
 
     it('should set release dates correct', async function () {
       await lockContract.initialize(
-        owner.address,
+        factoryAddr.address,
         addr1.address,
         coinContract.address,
         100,
@@ -324,7 +327,7 @@ describe('TokenTimeLock', function () {
 
     it(`should revert when does not meet next unlock phase requirements`, async function () {
       await lockContract.initialize(
-        owner.address,
+        factoryAddr.address,
         addr1.address,
         coinContract.address,
         10,
@@ -366,7 +369,7 @@ describe('TokenTimeLock', function () {
 
     it('should revert when all lock phases are released', async function () {
       await lockContract.initialize(
-        owner.address,
+        factoryAddr.address,
         addr1.address,
         coinContract.address,
         10,
@@ -393,7 +396,7 @@ describe('TokenTimeLock', function () {
 
     it('should revert when contract has insufficient balance to withdraw', async function () {
       await lockContract.initialize(
-        owner.address,
+        factoryAddr.address,
         addr1.address,
         coinContract.address,
         100,
@@ -412,35 +415,6 @@ describe('TokenTimeLock', function () {
       ethers.provider.send('evm_increaseTime', [3600 * 24 * 5]);
       await expect(lockContract.connect(addr1).release()).to.be.revertedWith(
         'TokenTimeLock: insufficient balance'
-      );
-    });
-
-    it('should safety release for owner only and transfers back to owner', async function () {
-      await lockContract.initialize(
-        owner.address,
-        addr1.address,
-        coinContract.address,
-        100,
-        [daysToSeconds(1)],
-        [100],
-        await EthUtils.latestBlockTimestamp()
-      );
-
-      const lockAmount = 100;
-      await coinContract.transfer(lockContract.address, lockAmount);
-      const ownerBalance = await coinContract.balanceOf(owner.address);
-
-      await expect(lockContract.connect(addr1).safetyRelease()).to.revertedWith(
-        'Ownable: caller is not the owner'
-      );
-
-      await expect(lockContract.safetyRelease()).to.emit(
-        lockContract,
-        'SafetyReleaseActivated'
-      );
-
-      expect(await coinContract.balanceOf(owner.address)).to.equal(
-        BigNumber.from(ownerBalance).add(lockAmount)
       );
     });
   });
