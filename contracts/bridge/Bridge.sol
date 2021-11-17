@@ -1,5 +1,6 @@
 //SPDX-License-Identifier: MIT
 pragma solidity 0.8.4;
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 interface IERC20 {
     function balanceOf(address owner) external view returns (uint256);
@@ -20,9 +21,10 @@ interface IERC20 {
     ) external returns (bool);
 }
 
-contract Bridge {
+contract Bridge is OwnableUpgradeable{
     address public admin;
-    address public relayer;
+    mapping(address => bool) public relayer;
+    uint256 public service_fee;
     IERC20 public bholdusToken = IERC20(0xf4275FD572398215ea31e630832C9652E59051E9);
 
     struct TransferInfo {
@@ -36,29 +38,37 @@ contract Bridge {
     uint32 next_outbound_transfer_id = 0;
     uint32 next_confirmed_outbound_transfer_id = 0;
     uint32 next_inbound_transfer_id = 0;
-    uint256 service_fee = 10;
 
-    event TransferInitiated(uint256 indexed transfer_id, address from, bytes32 to, uint256 amount, uint256 target_chain);
-    event TokensReleased(uint256 indexed transfer_id, bytes32 from, address to, uint256 indexed amount);
+    event TransferInitiated(uint256 indexed transfer_id, address indexed from, bytes32 indexed to, uint256 amount, uint256 target_chain);
+    event TokensReleased(uint256 indexed transfer_id, bytes32 indexed from, address indexed to, uint256 amount);
 
     mapping(uint256 => TransferInfo) _transferInfo;
 
     constructor(
         address _admin,
-        address _relayer
+        address _token,
+        uint256 _fee
     ){
         admin = _admin;
-        relayer = _relayer;
+        bholdusToken = IERC20(_token);
+        service_fee = _fee;
     }
 
     function initiateTransfer(bytes32 to, uint256 amount, uint16 target_chain) public payable{
-        require(msg.value > 0, "Require fee to execute transaction");
+        require(msg.value == service_fee, "Missing service fee");
         IERC20(bholdusToken).transferFrom(msg.sender, address(this), amount);
-        next_outbound_transfer_id = next_outbound_transfer_id + 1;
+        
+        //set transfer info
         TransferInfo memory transferInfo;
         transferInfo.service_fee = msg.value;
+        transferInfo.amount = amount;
+        transferInfo.from = msg.sender;
+        transferInfo.to = to;
+        transferInfo.target_chain = target_chain;
         _transferInfo[next_outbound_transfer_id] = transferInfo;
+        
         emit TransferInitiated(next_outbound_transfer_id, msg.sender, to, amount, target_chain);
+        next_outbound_transfer_id = next_outbound_transfer_id + 1;
     }
 
     function confirmTransfer(uint256 transfer_id) public onlyRelayer{
@@ -79,20 +89,24 @@ contract Bridge {
         return addr.balance;
     }
 
-    function forceRegisterRelayer(address _relayer) public{
-        relayer = _relayer;
+    function forceRegisterRelayer(address _relayer) public onlyOwner{
+        relayer[_relayer] = true;
     }
 
-    function forceUnregisterRelayer(address _relayer) public{
+    function forceUnregisterRelayer(address _relayer) public onlyOwner{
         
     }
 
-    function forceRegisterToken(address _token) public{
+    function forceRegisterToken(address _token) public onlyOwner{
         bholdusToken = IERC20(_token);
+    }
+
+    function setFee(uint256 _fee) public onlyOwner{
+        service_fee = _fee;
     }
     
     modifier onlyRelayer() {
-        require(msg.sender == relayer, "Caller is not the relayer");
+        require(relayer[msg.sender] == true, "Caller is not the relayer");
         _;
     }
 }
