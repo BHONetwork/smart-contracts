@@ -85,8 +85,8 @@ contract Bridge is OwnableUpgradeable, UUPSUpgradeable{
     function confirmTransfer(uint256 transfer_id) public onlyRelayer{
         require(next_confirmed_outbound_transfer_id < next_outbound_transfer_id, 'Incorrect outbound id');
         TransferInfo memory transferInfo = _transferInfo[transfer_id];
-        IERC20(bholdusToken).approve(address(this), service_fee);
-        IERC20(bholdusToken).transferFrom(address(this), msg.sender, service_fee);
+        IERC20(bholdusToken).approve(address(this),  transferInfo.service_fee);
+        IERC20(bholdusToken).transferFrom(address(this), msg.sender, transferInfo.service_fee);
         next_confirmed_outbound_transfer_id = next_confirmed_outbound_transfer_id + 1;
     }
 
