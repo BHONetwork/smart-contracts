@@ -85,6 +85,11 @@ const config: HardhatUserConfig = {
     },
     alice: 3,
     bob: 4,
+    bridgeAdmin:{
+      default: 5,
+      'bsc-testnet': process.env.BSC_TESTNET_BRIDGE_ADMIN_ADDRESS as string,
+      'bsc-mainnet': process.env.BSC_MAINNET_BRIDGE_ADMIN_ADDRESS as string,
+    }
   },
 };
 
