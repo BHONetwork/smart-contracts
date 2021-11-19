@@ -5,7 +5,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts, ethers } = hre;
   const { deploy, log } = deployments;
   const { deployer, bridgeAdmin } = await getNamedAccounts();
-  const deployment = await deployments.get('CoinBHO')
+  const deployment = await deployments.get('CoinBHO');
+  const serviceFee = ethers.BigNumber.from('1000000000000000');
+
   const deployResult = await deploy('Bridge', {
     from: deployer,
     args: [],
@@ -15,15 +17,15 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       execute: {
         init: {
           methodName: 'initialize',
-          args: [bridgeAdmin, deployment.address, 1000_000_000],
+          args: [bridgeAdmin, deployment.address, serviceFee],
         },
       },
     },
   });
-  const bridgeContract = await ethers.getContract('Bridge_Implementation')
-  await bridgeContract.initialize(bridgeAdmin, deployment.address, 1000_000_000)
+  /* const bridgeContract = await ethers.getContract('Bridge_Implementation');
+  await bridgeContract.initialize(bridgeAdmin, deployment.address, serviceFee); */
 };
 
 func.tags = ['bridge', 'main-suite'];
-func.dependencies = ['coin-bho']
+func.dependencies = ['coin-bho'];
 export default func;
