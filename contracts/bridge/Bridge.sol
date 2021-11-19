@@ -7,7 +7,7 @@ import "../token/BEP20/IBEP20.sol";
 contract Bridge is OwnableUpgradeable, UUPSUpgradeable {
     struct TransferInfo {
         uint256 amount;
-        uint256 service_fee;
+        uint256 serviceFee;
         address from;
         bytes32 to;
         uint16 target_chain;
@@ -17,11 +17,11 @@ contract Bridge is OwnableUpgradeable, UUPSUpgradeable {
     mapping(uint256 => TransferInfo) public outboundTransfers;
     mapping(address => bool) public relayers;
     mapping(uint16 => bool) public chains;
-    uint256 public next_outbound_transfer_id;
-    uint256 public next_confirm_outbound_transfer_id;
-    uint256 public next_inbound_transfer_id;
-    uint256 public service_fee;
-    address public bholdus_token;
+    uint256 public nextOutboundTransferId;
+    uint256 public nextConfirmOutboundTransferId;
+    uint256 public nextInboundTransferId;
+    uint256 public serviceFee;
+    address public bholdusToken;
 
     event TransferInitiated(
         uint256 indexed transfer_id,
@@ -46,8 +46,8 @@ contract Bridge is OwnableUpgradeable, UUPSUpgradeable {
         __Ownable_init();
         __UUPSUpgradeable_init();
 
-        bholdus_token = _token;
-        service_fee = _fee;
+        bholdusToken = _token;
+        serviceFee = _fee;
 
         transferOwnership(_admin);
 
@@ -66,46 +66,44 @@ contract Bridge is OwnableUpgradeable, UUPSUpgradeable {
         uint16 target_chain
     ) public payable {
         require(chains[target_chain], "Unsupported chain");
-        require(msg.value == service_fee, "Missing service fee");
-        IBEP20(bholdus_token).transferFrom(msg.sender, address(this), amount);
+        require(msg.value == serviceFee, "Missing service fee");
+        IBEP20(bholdusToken).transferFrom(msg.sender, address(this), amount);
 
         //set transfer info
         TransferInfo memory transferInfo;
-        transferInfo.service_fee = msg.value;
+        transferInfo.serviceFee = msg.value;
         transferInfo.amount = amount;
         transferInfo.from = msg.sender;
         transferInfo.to = to;
         transferInfo.target_chain = target_chain;
         transferInfo.is_exist = true;
-        outboundTransfers[next_outbound_transfer_id] = transferInfo;
+        outboundTransfers[nextOutboundTransferId] = transferInfo;
 
         emit TransferInitiated(
-            next_outbound_transfer_id,
+            nextOutboundTransferId,
             msg.sender,
             to,
             amount,
             target_chain
         );
-        next_outbound_transfer_id = next_outbound_transfer_id + 1;
+        nextOutboundTransferId = nextOutboundTransferId + 1;
     }
 
     function confirmTransfer(uint256 transfer_id) public onlyRelayer {
         require(
-            next_confirm_outbound_transfer_id < next_outbound_transfer_id,
+            nextConfirmOutboundTransferId < nextOutboundTransferId,
             "All transfers are confirmed"
         );
 
         require(
-            next_confirm_outbound_transfer_id == transfer_id,
+            nextConfirmOutboundTransferId == transfer_id,
             "Invalid transfer id"
         );
 
         TransferInfo memory transferInfo = outboundTransfers[transfer_id];
-        payable(address(msg.sender)).transfer(transferInfo.service_fee);
+        payable(address(msg.sender)).transfer(transferInfo.serviceFee);
 
-        next_confirm_outbound_transfer_id =
-            next_confirm_outbound_transfer_id +
-            1;
+        nextConfirmOutboundTransferId = nextConfirmOutboundTransferId + 1;
     }
 
     function releaseToken(
@@ -114,9 +112,9 @@ contract Bridge is OwnableUpgradeable, UUPSUpgradeable {
         address to,
         uint256 amount
     ) public onlyRelayer {
-        require(transfer_id == next_inbound_transfer_id, "Invalid transfer id");
-        IBEP20(bholdus_token).transfer(to, amount);
-        next_inbound_transfer_id += 1;
+        require(transfer_id == nextInboundTransferId, "Invalid transfer id");
+        IBEP20(bholdusToken).transfer(to, amount);
+        nextInboundTransferId += 1;
         emit TokensReleased(transfer_id, from, to, amount);
     }
 
@@ -133,11 +131,11 @@ contract Bridge is OwnableUpgradeable, UUPSUpgradeable {
     }
 
     function forceRegisterToken(address _token) public onlyOwner {
-        bholdus_token = _token;
+        bholdusToken = _token;
     }
 
     function forceSetFee(uint256 _fee) public onlyOwner {
-        service_fee = _fee;
+        serviceFee = _fee;
     }
 
     function forceWithdrawNative(address payable to) public onlyOwner {
@@ -145,9 +143,9 @@ contract Bridge is OwnableUpgradeable, UUPSUpgradeable {
     }
 
     function forceWithdraw(address to) public onlyOwner {
-        IBEP20(bholdus_token).transfer(
+        IBEP20(bholdusToken).transfer(
             to,
-            IBEP20(bholdus_token).balanceOf(address(this))
+            IBEP20(bholdusToken).balanceOf(address(this))
         );
     }
 

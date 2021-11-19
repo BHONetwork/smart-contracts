@@ -163,13 +163,13 @@ describe('Bridge', async () => {
         beforeUserNativeBalance.sub(serviceFee).sub(gasFee)
       );
 
-      expect(await bridgeContract.next_outbound_transfer_id()).to.eq(1);
+      expect(await bridgeContract.nextOutboundTransferId()).to.eq(1);
 
       const transferInfo = await bridgeContract.outboundTransfers(0);
       expect(transferInfo.amount).to.eq(transferAmount);
       expect(transferInfo.from).to.eq(deployer.address);
       expect(transferInfo.to).to.eq(toAddress);
-      expect(transferInfo.service_fee).to.eq(serviceFee);
+      expect(transferInfo.serviceFee).to.eq(serviceFee);
       expect(transferInfo.target_chain).to.eq(0);
       expect(transferInfo.is_exist).to.eq(true);
     });
@@ -282,7 +282,7 @@ describe('Bridge', async () => {
       const transferInfo = await bridgeContract.outboundTransfers(0);
 
       expect(await ethers.provider.getBalance(alice.address)).to.eq(
-        relayerBeforeNativeBalance.sub(gasFee).add(transferInfo.service_fee)
+        relayerBeforeNativeBalance.sub(gasFee).add(transferInfo.serviceFee)
       );
     });
 
@@ -325,6 +325,7 @@ describe('Bridge', async () => {
         .withArgs(0, toAddress, bob.address, 100_000);
       let balanceTo = await coinContract.balanceOf(bob.address);
       expect(balanceTo).to.equal(beforeUserCoinBalance.add(100_000));
+      expect(await bridgeContract.nextInboundTransferId()).to.eq(1);
     });
   });
 });
