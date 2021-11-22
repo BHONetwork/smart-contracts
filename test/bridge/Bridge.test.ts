@@ -16,6 +16,7 @@ describe('Bridge', async () => {
   let bridgeAdmin: SignerWithAddress;
   let alice: SignerWithAddress;
   let bob: SignerWithAddress;
+  let decimals: number;
   const toAddress =
     '0x05416460deb76d57af601be17e777b93592d8d4d4a4096c57876a91c84f4a712';
   const serviceFee = ethers.BigNumber.from('1000000000000000');
@@ -36,6 +37,7 @@ describe('Bridge', async () => {
     bridgeContract = await ethers.getContract('Bridge');
     await coinContract.deployed();
     await bridgeContract.deployed();
+    decimals = await coinContract.decimals();
   });
 
   describe('Transaction', function () {
@@ -94,6 +96,25 @@ describe('Bridge', async () => {
             value: serviceFee,
           })
       ).to.revertedWith('Unsupported chain');
+    });
+
+    it('Initiate transfer with amount less than minimum deposit should revert', async () => {
+      const decimals = await coinContract.decimals();
+      const approveAmount = BigNumber.from(100_000_000).mul(
+        BigNumber.from(10).pow(decimals)
+      );
+
+      const transferAmount = BigNumber.from(10);
+
+      await bridgeContract.connect(bridgeAdmin).forceRegisterChain(0);
+
+      await coinContract.approve(bridgeContract.address, approveAmount);
+
+      await expect(
+        bridgeContract
+          .connect(alice)
+          .initiateTransfer(toAddress, transferAmount, 0, { value: serviceFee })
+      ).to.revertedWith('Minimum amount required');
     });
 
     it('Initiate transfer should work', async () => {
@@ -170,8 +191,8 @@ describe('Bridge', async () => {
       expect(transferInfo.from).to.eq(deployer.address);
       expect(transferInfo.to).to.eq(toAddress);
       expect(transferInfo.serviceFee).to.eq(serviceFee);
-      expect(transferInfo.target_chain).to.eq(0);
-      expect(transferInfo.is_exist).to.eq(true);
+      expect(transferInfo.targetChain).to.eq(0);
+      expect(transferInfo.isExist).to.eq(true);
     });
 
     it('Register relayer not by admin should revert', async () => {
@@ -237,12 +258,15 @@ describe('Bridge', async () => {
     });
 
     it('confirm transfer with invalid transfer_id should revert', async () => {
+      const transferAmount = ethers.BigNumber.from('10').mul(
+        BigNumber.from(10).pow(decimals)
+      );
       await bridgeContract
         .connect(bridgeAdmin)
         .forceRegisterRelayer(alice.address);
       await coinContract
         .connect(deployer)
-        .approve(bridgeContract.address, 100_000);
+        .approve(bridgeContract.address, transferAmount);
 
       await expect(
         bridgeContract.connect(alice).confirmTransfer(0)
@@ -250,7 +274,7 @@ describe('Bridge', async () => {
 
       await bridgeContract.connect(bridgeAdmin).forceRegisterChain(0);
 
-      await bridgeContract.initiateTransfer(toAddress, 100_000, 0, {
+      await bridgeContract.initiateTransfer(toAddress, transferAmount, 0, {
         value: serviceFee,
       });
 
@@ -260,16 +284,20 @@ describe('Bridge', async () => {
     });
 
     it('confirm transfer should work', async () => {
+      const transferAmount = ethers.BigNumber.from('10').mul(
+        BigNumber.from(10).pow(decimals)
+      );
+
       await bridgeContract
         .connect(bridgeAdmin)
         .forceRegisterRelayer(alice.address);
       await coinContract
         .connect(deployer)
-        .approve(bridgeContract.address, 100_000);
+        .approve(bridgeContract.address, transferAmount);
 
       await bridgeContract.connect(bridgeAdmin).forceRegisterChain(0);
 
-      await bridgeContract.initiateTransfer(toAddress, 100_000, 0, {
+      await bridgeContract.initiateTransfer(toAddress, transferAmount, 0, {
         value: serviceFee,
       });
 

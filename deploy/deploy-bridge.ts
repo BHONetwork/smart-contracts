@@ -7,6 +7,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer, bridgeAdmin } = await getNamedAccounts();
   const deployment = await deployments.get('CoinBHO');
   const serviceFee = ethers.BigNumber.from('1000000000000000');
+  const minDeposit = ethers.BigNumber.from('10000000000000000');
 
   const deployResult = await deploy('Bridge', {
     from: deployer,
@@ -17,7 +18,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       execute: {
         init: {
           methodName: 'initialize',
-          args: [bridgeAdmin, deployment.address, serviceFee],
+          args: [bridgeAdmin, deployment.address, serviceFee, minDeposit],
         },
       },
     },

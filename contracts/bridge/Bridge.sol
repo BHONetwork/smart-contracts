@@ -10,8 +10,8 @@ contract Bridge is OwnableUpgradeable, UUPSUpgradeable {
         uint256 serviceFee;
         address from;
         bytes32 to;
-        uint16 target_chain;
-        bool is_exist;
+        uint16 targetChain;
+        bool isExist;
     }
 
     mapping(uint256 => TransferInfo) public outboundTransfers;
@@ -21,6 +21,7 @@ contract Bridge is OwnableUpgradeable, UUPSUpgradeable {
     uint256 public nextConfirmOutboundTransferId;
     uint256 public nextInboundTransferId;
     uint256 public serviceFee;
+    uint256 public minDeposit;
     address public bholdusToken;
 
     event TransferInitiated(
@@ -28,7 +29,7 @@ contract Bridge is OwnableUpgradeable, UUPSUpgradeable {
         address indexed from,
         bytes32 indexed to,
         uint256 amount,
-        uint16 target_chain
+        uint16 targetChain
     );
 
     event TokensReleased(
@@ -41,13 +42,15 @@ contract Bridge is OwnableUpgradeable, UUPSUpgradeable {
     function initialize(
         address _admin,
         address _token,
-        uint256 _fee
+        uint256 _fee,
+        uint256 _minDeposit
     ) public initializer returns (bool) {
         __Ownable_init();
         __UUPSUpgradeable_init();
 
         bholdusToken = _token;
         serviceFee = _fee;
+        minDeposit = _minDeposit;
 
         transferOwnership(_admin);
 
@@ -63,10 +66,12 @@ contract Bridge is OwnableUpgradeable, UUPSUpgradeable {
     function initiateTransfer(
         bytes32 to,
         uint256 amount,
-        uint16 target_chain
+        uint16 targetChain
     ) public payable {
-        require(chains[target_chain], "Unsupported chain");
+        require(chains[targetChain], "Unsupported chain");
         require(msg.value == serviceFee, "Missing service fee");
+        require(amount >= minDeposit, "Minimum amount required");
+
         IBEP20(bholdusToken).transferFrom(msg.sender, address(this), amount);
 
         //set transfer info
@@ -75,8 +80,8 @@ contract Bridge is OwnableUpgradeable, UUPSUpgradeable {
         transferInfo.amount = amount;
         transferInfo.from = msg.sender;
         transferInfo.to = to;
-        transferInfo.target_chain = target_chain;
-        transferInfo.is_exist = true;
+        transferInfo.targetChain = targetChain;
+        transferInfo.isExist = true;
         outboundTransfers[nextOutboundTransferId] = transferInfo;
 
         emit TransferInitiated(
@@ -84,7 +89,7 @@ contract Bridge is OwnableUpgradeable, UUPSUpgradeable {
             msg.sender,
             to,
             amount,
-            target_chain
+            targetChain
         );
         nextOutboundTransferId = nextOutboundTransferId + 1;
     }
