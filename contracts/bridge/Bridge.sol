@@ -162,6 +162,10 @@ contract Bridge is OwnableUpgradeable, UUPSUpgradeable {
         chains[chain] = false;
     }
 
+    function forceSetMinDeposit(uint256 amount) public onlyOwner {
+        minDeposit = amount;
+    }
+
     modifier onlyRelayer() {
         require(
             relayers[msg.sender] == true,

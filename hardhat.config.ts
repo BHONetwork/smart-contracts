@@ -15,9 +15,9 @@ dotenv.config();
 task('accounts', 'Prints the list of accounts', async (args, hre) => {
   const accounts = await hre.ethers.getSigners();
 
-  for (const account of accounts) {
-    console.log(account.address);
-  }
+  accounts.forEach((account, index) => {
+    console.log(`${index} Address: ${account.address}`);
+  });
 });
 
 // You need to export an object to set up your config
@@ -85,11 +85,11 @@ const config: HardhatUserConfig = {
     },
     alice: 3,
     bob: 4,
-    bridgeAdmin:{
+    bridgeAdmin: {
       default: 5,
       'bsc-testnet': process.env.BSC_TESTNET_BRIDGE_ADMIN_ADDRESS as string,
       'bsc-mainnet': process.env.BSC_MAINNET_BRIDGE_ADMIN_ADDRESS as string,
-    }
+    },
   },
 };
 
