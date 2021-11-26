@@ -38,6 +38,12 @@ const config: HardhatUserConfig = {
     ethPrice: 300,
   },
   networks: {
+    hardhat: {
+      mining: {
+        auto: false,
+        interval: 1000,
+      },
+    },
     localhost: {
       saveDeployments: false,
       live: false,
