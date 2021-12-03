@@ -38,15 +38,13 @@ const config: HardhatUserConfig = {
     ethPrice: 300,
   },
   networks: {
-    hardhat: {
+    localhost: {
+      saveDeployments: false,
+      live: false,
       mining: {
         auto: false,
         interval: 1000,
       },
-    },
-    localhost: {
-      saveDeployments: false,
-      live: false,
     },
     'bsc-testnet': {
       url: 'https://data-seed-prebsc-1-s2.binance.org:8545',

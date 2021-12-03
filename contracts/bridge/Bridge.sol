@@ -23,6 +23,7 @@ contract Bridge is OwnableUpgradeable, UUPSUpgradeable {
     uint256 public serviceFee;
     uint256 public minDeposit;
     address public bholdusToken;
+    bool public frozen;
 
     event TransferInitiated(
         uint256 indexed transfer_id,
@@ -68,6 +69,7 @@ contract Bridge is OwnableUpgradeable, UUPSUpgradeable {
         uint256 amount,
         uint16 targetChain
     ) public payable {
+        require(!frozen, "Bridge is frozen by admin");
         require(chains[targetChain], "Unsupported chain");
         require(msg.value == serviceFee, "Missing service fee");
         require(amount >= minDeposit, "Minimum amount required");
@@ -95,6 +97,7 @@ contract Bridge is OwnableUpgradeable, UUPSUpgradeable {
     }
 
     function confirmTransfer(uint256 transfer_id) public onlyRelayer {
+        require(!frozen, "Bridge is frozen by admin");
         require(
             nextConfirmOutboundTransferId < nextOutboundTransferId,
             "All transfers are confirmed"
@@ -117,6 +120,7 @@ contract Bridge is OwnableUpgradeable, UUPSUpgradeable {
         address to,
         uint256 amount
     ) public onlyRelayer {
+        require(!frozen, "Bridge is frozen by admin");
         require(transfer_id == nextInboundTransferId, "Invalid transfer id");
         IBEP20(bholdusToken).transfer(to, amount);
         nextInboundTransferId += 1;
@@ -164,6 +168,14 @@ contract Bridge is OwnableUpgradeable, UUPSUpgradeable {
 
     function forceSetMinDeposit(uint256 amount) public onlyOwner {
         minDeposit = amount;
+    }
+
+    function forceFreeze() public onlyOwner {
+        frozen = true;
+    }
+
+    function forceUnfreeze() public onlyOwner {
+        frozen = false;
     }
 
     modifier onlyRelayer() {

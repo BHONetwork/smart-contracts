@@ -117,6 +117,27 @@ describe('Bridge', async () => {
       ).to.revertedWith('Minimum amount required');
     });
 
+    it('Initiate transfer with frozen bridge should revert', async () => {
+      const decimals = await coinContract.decimals();
+      const approveAmount = BigNumber.from(100_000_000).mul(
+        BigNumber.from(10).pow(decimals)
+      );
+
+      const transferAmount = BigNumber.from(10);
+
+      await bridgeContract.connect(bridgeAdmin).forceRegisterChain(0);
+
+      await coinContract.approve(bridgeContract.address, approveAmount);
+
+      await bridgeContract.connect(bridgeAdmin).forceFreeze();
+
+      await expect(
+        bridgeContract
+          .connect(alice)
+          .initiateTransfer(toAddress, transferAmount, 0, { value: serviceFee })
+      ).to.revertedWith('Bridge is frozen by admin');
+    });
+
     it('Initiate transfer should work', async () => {
       // Transfer 50 tokens from owner to alice
       const decimals = await coinContract.decimals();
@@ -283,6 +304,16 @@ describe('Bridge', async () => {
       ).to.revertedWith('Invalid transfer id');
     });
 
+    it('confirm transfer with frozen bridge should revert', async () => {
+      await bridgeContract.connect(bridgeAdmin).forceFreeze();
+      await bridgeContract
+        .connect(bridgeAdmin)
+        .forceRegisterRelayer(alice.address);
+      await expect(
+        bridgeContract.connect(alice).confirmTransfer(0)
+      ).to.be.revertedWith('Bridge is frozen by admin');
+    });
+
     it('confirm transfer should work', async () => {
       const transferAmount = ethers.BigNumber.from('10').mul(
         BigNumber.from(10).pow(decimals)
@@ -354,6 +385,34 @@ describe('Bridge', async () => {
       let balanceTo = await coinContract.balanceOf(bob.address);
       expect(balanceTo).to.equal(beforeUserCoinBalance.add(100_000));
       expect(await bridgeContract.nextInboundTransferId()).to.eq(1);
+    });
+
+    it('Release token with frozen bridge should revert', async () => {
+      await bridgeContract
+        .connect(bridgeAdmin)
+        .forceRegisterRelayer(alice.address);
+      await bridgeContract.connect(bridgeAdmin).forceFreeze();
+      await expect(
+        bridgeContract
+          .connect(alice)
+          .releaseToken(1, toAddress, bob.address, 100_000)
+      ).to.revertedWith('Bridge is frozen by admin');
+    });
+
+    it('Freeze/unfreeze without admin rights should revert', async () => {
+      await expect(bridgeContract.forceFreeze()).to.revertedWith(
+        'Ownable: caller is not the owner'
+      );
+      await expect(bridgeContract.forceUnfreeze()).to.revertedWith(
+        'Ownable: caller is not the owner'
+      );
+    });
+
+    it('Freeze/unfreeze with admin rights should work', async () => {
+      await bridgeContract.connect(bridgeAdmin).forceFreeze();
+      expect(await bridgeContract.frozen()).to.eq(true);
+      await bridgeContract.connect(bridgeAdmin).forceUnfreeze();
+      expect(await bridgeContract.frozen()).to.eq(false);
     });
   });
 });
