@@ -53,6 +53,13 @@ const config: HardhatUserConfig = {
       tags: ['staging'],
       chainId: 97,
     },
+    'bsc-testnet-1': {
+      url: 'https://data-seed-prebsc-1-s2.binance.org:8545',
+      accounts: [process.env.BSC_TESTNET_DEPLOYER_PRIVATE_KEY as string],
+      live: true,
+      tags: ['staging'],
+      chainId: 97,
+    },
     'bsc-mainnet': {
       url: 'https://bsc-dataseed.binance.org/',
       accounts: [process.env.BSC_MAINNET_DEPLOYER_PRIVATE_KEY as string],
@@ -80,11 +87,13 @@ const config: HardhatUserConfig = {
     feeCollector: {
       default: 1,
       'bsc-testnet': process.env.BSC_TESTNET_FEE_COLLECTOR_ADDRESS as string,
+      'bsc-testnet-1': process.env.BSC_TESTNET_FEE_COLLECTOR_ADDRESS as string,
       'bsc-mainnet': process.env.BSC_MAINNET_FEE_COLLECTOR_ADDRESS as string,
     },
     defaultAdmin: {
       default: 2,
       'bsc-testnet': process.env.BSC_TESTNET_DEFAULT_ADMIN_ADDRESS as string,
+      'bsc-testnet-1': process.env.BSC_TESTNET_DEFAULT_ADMIN_ADDRESS as string,
       'bsc-mainnet': process.env.BSC_MAINNET_DEFAULT_ADMIN_ADDRESS as string,
     },
     alice: 3,
@@ -92,6 +101,7 @@ const config: HardhatUserConfig = {
     bridgeAdmin: {
       default: 5,
       'bsc-testnet': process.env.BSC_TESTNET_BRIDGE_ADMIN_ADDRESS as string,
+      'bsc-testnet-1': process.env.BSC_TESTNET_BRIDGE_ADMIN_ADDRESS as string,
       'bsc-mainnet': process.env.BSC_MAINNET_BRIDGE_ADMIN_ADDRESS as string,
     },
   },

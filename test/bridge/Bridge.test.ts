@@ -20,6 +20,7 @@ describe('Bridge', async () => {
   const toAddress =
     '0x05416460deb76d57af601be17e777b93592d8d4d4a4096c57876a91c84f4a712';
   const serviceFee = ethers.BigNumber.from('1000000000000000');
+  const platformFee = ethers.BigNumber.from('1000000000000000');
 
   beforeEach(async () => {
     await deployments.fixture(['bridge']);
@@ -139,6 +140,7 @@ describe('Bridge', async () => {
     });
 
     it('Initiate transfer should work', async () => {
+      const fee = serviceFee.add(platformFee);
       // Transfer 50 tokens from owner to alice
       const decimals = await coinContract.decimals();
       const approveAmount = BigNumber.from(100_000_000_000_000).mul(
@@ -149,6 +151,9 @@ describe('Bridge', async () => {
         BigNumber.from(10).pow(decimals)
       );
       await bridgeContract.connect(bridgeAdmin).forceRegisterChain(0);
+      await bridgeContract
+        .connect(bridgeAdmin)
+        .forceSetPlatformFee(platformFee);
 
       await coinContract.approve(bridgeContract.address, approveAmount);
       const beforeBridgeCoinBalance = await coinContract.balanceOf(
@@ -165,7 +170,7 @@ describe('Bridge', async () => {
       const result: Promise<TransactionResponse> = bridgeContract
         .connect(deployer)
         .initiateTransfer(toAddress, transferAmount, 0, {
-          value: serviceFee,
+          value: fee,
         });
       await expect(result)
         .to.emit(bridgeContract, 'TransferInitiated')
@@ -199,10 +204,10 @@ describe('Bridge', async () => {
         beforeUserCoinBalance.sub(transferAmount)
       );
       expect(afterBridgeNativeBalance).to.equal(
-        beforeBridgeNativeBalance.add(serviceFee)
+        beforeBridgeNativeBalance.add(fee)
       );
       expect(afterUserNativeBalance).to.equal(
-        beforeUserNativeBalance.sub(serviceFee).sub(gasFee)
+        beforeUserNativeBalance.sub(fee).sub(gasFee)
       );
 
       expect(await bridgeContract.nextOutboundTransferId()).to.eq(1);
@@ -211,7 +216,7 @@ describe('Bridge', async () => {
       expect(transferInfo.amount).to.eq(transferAmount);
       expect(transferInfo.from).to.eq(deployer.address);
       expect(transferInfo.to).to.eq(toAddress);
-      expect(transferInfo.serviceFee).to.eq(serviceFee);
+      expect(transferInfo.serviceFee).to.eq(fee);
       expect(transferInfo.targetChain).to.eq(0);
       expect(transferInfo.isExist).to.eq(true);
     });
@@ -413,6 +418,28 @@ describe('Bridge', async () => {
       expect(await bridgeContract.frozen()).to.eq(true);
       await bridgeContract.connect(bridgeAdmin).forceUnfreeze();
       expect(await bridgeContract.frozen()).to.eq(false);
+    });
+
+    it('Set service fee without admin rights should revert', async () => {
+      await expect(bridgeContract.forceSetServiceFee(10)).to.revertedWith(
+        'Ownable: caller is not the owner'
+      );
+    });
+
+    it('Set service fee with admin rights should work', async () => {
+      await bridgeContract.connect(bridgeAdmin).forceSetServiceFee(10);
+      expect(await bridgeContract.serviceFee()).to.eq(10);
+    });
+
+    it('Set platform fee without admin rights should revert', async () => {
+      await expect(bridgeContract.forceSetPlatformFee(10)).to.revertedWith(
+        'Ownable: caller is not the owner'
+      );
+    });
+
+    it('Set service fee with admin rights should work', async () => {
+      await bridgeContract.connect(bridgeAdmin).forceSetPlatformFee(10);
+      expect(await bridgeContract.platformFee()).to.eq(10);
     });
   });
 });
