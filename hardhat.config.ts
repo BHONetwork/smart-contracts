@@ -101,7 +101,9 @@ const config: HardhatUserConfig = {
     bridgeAdmin: {
       default: 5,
       'bsc-testnet': process.env.BSC_TESTNET_BRIDGE_ADMIN_ADDRESS as string,
-      'bsc-testnet-1': process.env.BSC_TESTNET_BRIDGE_ADMIN_ADDRESS as string,
+      'bsc-testnet-1': `privatekey://${
+        process.env.BSC_TESTNET_BRIDGE_ADMIN_PRIVATE_KEY as string
+      }`,
       'bsc-mainnet': process.env.BSC_MAINNET_BRIDGE_ADMIN_ADDRESS as string,
     },
   },
