@@ -5,8 +5,9 @@
   "main": "index.js",
   "scripts": {
     "check": "hardhat check",
-    "test": "hardhat test",
-    "gas-report": "env ENABLE_GAS_REPORT=true npm run test"
+    "test": "ln -s -f hardhat.config.test.ts hardhat.config.ts && hardhat test",
+    "gas-report": "env ENABLE_GAS_REPORT=true npm run test",
+    "node": "ln -s -f hardhat.config.dev.ts hardhat.config.ts && hardhat node --no-deploy --show-accounts"
   },
   "keywords": [
     "bholdus",
@@ -30,7 +31,7 @@
     "ethereum-waffle": "^3.4.0",
     "ethers": "^5.5.1",
     "hardhat": "^2.4.0",
-    "hardhat-deploy": "^0.8.8",
+    "hardhat-deploy": "^0.9.14",
     "hardhat-gas-reporter": "^1.0.4",
     "prettier": "^2.3.1",
     "prettier-plugin-solidity": "^1.0.0-beta.13",

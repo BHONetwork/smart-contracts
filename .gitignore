@@ -7,3 +7,5 @@ artifacts
 .env
 
 contract-abi.json
+
+hardhat.config.ts
